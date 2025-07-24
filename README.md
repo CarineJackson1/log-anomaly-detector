@@ -25,8 +25,8 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 [Setup instructions - will be expanded as project develops]
 
 ## Project Documentation
-- [Link to PRD in Notion]: https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link
-- [Link to team workspace]: https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2
+- [Link to PRD in Notion]: (https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link)
+- [Link to team workspace]: (https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
 - [Link to GITFLOW.md]
 
 ## Team Communication
