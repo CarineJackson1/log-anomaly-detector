@@ -1,4 +1,4 @@
-# astroskill-lms-connector
+# Astroskill-lms-connector
 ## Project Overview
 AstroSkill LMS Connector is a full-stack platform that bridges the gap between Moodle course completion and aerospace employer recruitment. It enables the tracking of learner progress and the matching of qualified candidates with hiring organizations in the aerospace sector.
 
