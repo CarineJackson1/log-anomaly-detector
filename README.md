@@ -1,6 +1,6 @@
-# astroskill-lms-connector
+# Astroskill-lms-connector
 ## Project Overview
-AstroSkill LMS Connector is a full-stack platform that bridges the gap between Moodle course completion and aerospace employer recruitment. It enables tracking learner progress and matching qualified candidates with hiring organizations in the aerospace sector.
+AstroSkill LMS Connector is a full-stack platform that bridges the gap between Moodle course completion and aerospace employer recruitment. It enables the tracking of learner progress and the matching of qualified candidates with hiring organizations in the aerospace sector.
 
 ## Team Members & Roles
 - **[Geoffrey Burt]** - Backend Software Engineer
@@ -25,21 +25,11 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 [Setup instructions - will be expanded as project develops]
 
 ## Project Documentation
-- [Link to PRD in Notion]: https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link
-- [Link to team workspace]: https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2
-- [Link to GITFLOW.md]
+- [PRD in Notion](https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link)
+- [Team workspace](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
+- [GITFLOW.md](https://github.com/AstroSkill/astroskill-lms-connector/blob/main/GITFLOW.md)
 
 ## Team Communication
 - **Daily Standups:** [Tuesday's 1pm CT/2pm Est]
 - **Sprint Reviews:** [Monday/Wednesday/Friday 6pm Est.]
-- **Team Chat:** [Slack/Discord channel]: https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2
-
-File Structure
-astroskill-lms-connector/
-├── frontend/           # React/TypeScript components, UI
-├── backend/            # API, server logic, database
-├── docs/              # Technical documentation, API docs
-├── data/              # Data analysis, dashboards, datasets
-├── security/          # Security assessments, compliance docs
-├── testing/           # QA test plans, automation scripts
-└── README.md          # Project overview and setup guide
+- **Team Chat:** [Slack/Discord channel](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
