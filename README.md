@@ -32,4 +32,4 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 ## Team Communication
 - **Daily Standups:** [Tuesday's 1pm CT/2pm Est]
 - **Sprint Reviews:** [Monday/Wednesday/Friday 6pm Est.]
-- **Team Chat:** [Slack/Discord channel](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
+- **Team Chat:** [Slack/Discord channel](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)(https://discord.com/channels/1396991822990938244/1396991824006090935)
