@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+backend/venv/
+
+# Environment variables
+.env
+backend/.env
+
+# Migrations
+migrations/
+backend/migrations/
+
+# IDE
+.vscode/
+.idea/
+
+# Offline Work
+_offline_work/

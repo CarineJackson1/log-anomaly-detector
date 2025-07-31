@@ -24,6 +24,28 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 ## Getting Started
 [Setup instructions - will be expanded as project develops]
 
+### Backend Setup Instructions
+1. **Create Virtual Environment**
+   
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+
+2. Install Dependencies
+
+    pip install -r requirements.txt
+
+3. Set Environment Variables
+
+    cp .env.example .env
+
+4. Run the App
+
+    python app.py
+
+5. Test Healthcheck
+    
+    Visit http://localhost:5000/healthcheck/
+
 ## Project Documentation
 - [PRD in Notion](https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link)
 - [Team workspace](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
