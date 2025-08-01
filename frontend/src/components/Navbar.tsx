@@ -25,11 +25,6 @@ function Navbar() {
             Learner
             </Link>
           </li>
-          <li>
-            <Link to="/404" className="hover:text-blue-600 transition-colors duration-200">
-            404 Page
-            </Link>
-          </li>
         </ul>
       </div>
     </nav>
