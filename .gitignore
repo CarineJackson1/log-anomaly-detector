@@ -1,10 +1,10 @@
-# Python
+# Python bytecode
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Virtual environment
+# Virtual environments
 venv/
 backend/venv/
 
@@ -12,13 +12,17 @@ backend/venv/
 .env
 backend/.env
 
-# Migrations
-migrations/
-backend/migrations/
+# Alembic migration caches (keep migration scripts tracked)
+migrations/__pycache__/
+backend/migrations/__pycache__/
 
-# IDE
+# IDE and editor settings
 .vscode/
 .idea/
 
-# Offline Work
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Project-specific offline work
 _offline_work/

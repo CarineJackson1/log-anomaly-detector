@@ -33,32 +33,49 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
    python -m venv venv
    venv\Scripts\activate      # Windows
    source venv/bin/activate   # Mac/Linux
-   ```
 
-2. **Install Dependencies**
-   ```bash
+2. Upgrade pip (Recommended)
+
+   bash
+   Copy
+   Edit
+   python -m pip install --upgrade pip
+
+3. Install Dependencies
+
+   bash
+   Copy
+   Edit
    pip install -r requirements.txt
-   ```
 
-3. **Setup Environment Variables**
-   ```bash
+4. Setup Environment Variables
+
+   bash
+   Copy
+   Edit
    cp .env.example .env
-   ```
 
-4. **Initialize Database and Run Migrations**
-   ```bash
+5. Initialize Database and Run Migrations
+
+   bash
+   Copy
+   Edit
    alembic upgrade head
-   ```
 
-5. **Run the Backend**
-   ```bash
+6. Run the Backend
+
+   bash
+   Copy
+   Edit
    python app.py
-   ```
 
-6. **Verify Healthcheck**
-   - Healthcheck: [http://localhost:5000/healthcheck/](http://localhost:5000/healthcheck/)
-   - DB Tables: [http://localhost:5000/db-check/](http://localhost:5000/db-check/)  
+7. Verify Healthcheck
+
+   - General Healthcheck: [http://localhost:5000/healthcheck/](http://localhost:5000/healthcheck/)
+   - Database Tables: [http://localhost:5000/db-check/](http://localhost:5000/db-check/)  
      (should display `["alembic_version", "users"]` after migration)
+   - Auth Routes Status: [http://localhost:5000/auth/status](http://localhost:5000/auth/status)  
+     (should return `{"success": true, "data": {"auth_status": "ready"}, "message": "Authentication routes are live and responding."}`)
 
 ---
 
