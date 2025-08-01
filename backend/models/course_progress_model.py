@@ -4,6 +4,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Enum as SQLAlchemyEnum
 from enum import Enum
 
+# SQLAlchemy Enum setup for cycle through completion status
+
 class CompletionStatus(Enum):
     NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
