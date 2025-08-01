@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Learner from "./pages/Learner";
 import Employer from "./pages/Employer";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/learner" element={<Learner />} />
             <Route path="/employer" element={<Employer />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
       </div>

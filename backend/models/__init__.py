@@ -1,1 +1,1 @@
-# placeholder file
+from .user_model import User
