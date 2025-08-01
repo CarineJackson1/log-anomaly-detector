@@ -15,6 +15,21 @@ function Navbar() {
               Login
             </Link>
           </li>
+          <li>
+            <Link to="/Employer" className="hover:text-blue-600 transition-colors duration-200">
+            Employer
+            </Link>
+          </li>
+          <li>
+            <Link to="/Learner" className="hover:text-blue-600 transition-colors duration-200">
+            Learner
+            </Link>
+          </li>
+          <li>
+            <Link to="/404" className="hover:text-blue-600 transition-colors duration-200">
+            404 Page
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>
