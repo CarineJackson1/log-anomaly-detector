@@ -13,5 +13,9 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    learner_profiles = db.relationship("LearnerProfile", back_populates="user", cascade="all, delete-orphan")
+    course_progress = db.relationship("CourseProgress", back_populates="user", cascade="all, delete-orphan")
+    employer = db.relationship("Employer", back_populates="user", cascade="all, delete-orphan")
+    
     def __repr__(self):
         return f"<User {self.username}>"
