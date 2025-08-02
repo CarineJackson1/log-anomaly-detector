@@ -1,1 +1,0 @@
-Placeholder for Geoffrey Burt's model implementation.
