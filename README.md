@@ -79,6 +79,18 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 
 ---
 
+📌 Database Migrations with Alembic
+Alembic is used for managing changes to the database schema. It allows you to safely evolve the database without losing existing data.
+
+How It Works
+Models in backend/models define the database tables.
+
+Alembic compares these models to the actual database to detect differences.
+
+When a model is added, removed, or modified, you generate a migration script.
+
+Migrations are then applied to bring the database up to date.
+
 ### Adding a New Migration
 
 When modifying database models:
