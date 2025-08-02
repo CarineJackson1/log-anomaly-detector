@@ -1,0 +1,80 @@
+.home-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, #000000, #07010c), linear-gradient(to top, #08010c, #0d0118);
+  color: #e0e0e0;
+  min-height: 100vh;
+  width: 100%;
+  padding: 0 5%; /* add some horizontal padding */
+  position: relative; /* keep relative for absolute children if needed */
+  box-sizing: border-box;
+}
+
+.home-left {
+  flex: 0 0 55%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.home-tagline {
+  flex: 0 0 66%; /* take up about 2/3 of width */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #ffffff;
+}
+
+.homeh1 {
+  font-weight: 500;
+  margin-bottom: 1rem;
+  font-size: 3rem; /* bigger heading */
+}
+
+.homeh2 {
+  font-size: 1.75rem;
+  font-weight: 400;
+  color: #bbbbbb;
+  margin-bottom: 2rem;
+}
+
+.actBtn-wrapper {
+  flex: 0 0 66%; /* same width as tagline */
+  display: flex;
+  justify-content: flex-start; /* align left */
+  margin-top: 0; /* remove absolute positioning */
+}
+
+.act-btn {
+  width: 300px;
+  padding: 12px 24px;
+  background-color: #3f51b5;
+  color: #ffffff;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border: none;
+}
+
+.act-btn:hover {
+  background-color: #5c6bc0;
+}
+
+.fakeEarth {
+  border: 2px solid rgb(188, 220, 236);
+  background-color: rgb(30, 118, 211);
+  color: rgb(238, 238, 238);
+  font-weight: 500;
+  font-size: 1.5rem;
+  height: 350px;
+  width: 350px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative; /* changed from absolute */
+  /* you can add margin-left to separate from text */
+  margin-left: 3rem;
+}
