@@ -29,5 +29,6 @@ class CourseProgress(db.Model):
     user = relationship("User", backref=db.backref("course_progress", cascade="all, delete"))
     course = relationship("Course", backref=db.backref("course_progress", cascade="all, delete"))
     
+    # This method provides a string representation of the CourseProgress instance
     def __repr__(self):
         return f"<CourseProgress(user_id={self.user_id}, course_id={self.course_id}, completion_status={self.completion_status.value}, updated_at={self.updated_at})>"
