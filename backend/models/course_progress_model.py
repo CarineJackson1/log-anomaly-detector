@@ -17,7 +17,7 @@ class CourseProgress(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    course_id = db.Column(db.Integer, nullable=False) # No ForeignKey because the courses are linked to Moodle.
     completion_status = db.Column(
         SQLAlchemyEnum(CompletionStatus, name='completion_status_enum'), 
         nullable=False,
@@ -27,7 +27,6 @@ class CourseProgress(db.Model):
     
     # Relationships
     user = relationship("User", backref=db.backref("course_progress", cascade="all, delete"))
-    course = relationship("Course", backref=db.backref("course_progress", cascade="all, delete"))
     
     # This method provides a string representation of the CourseProgress instance
     def __repr__(self):
