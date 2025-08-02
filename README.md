@@ -72,7 +72,7 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 7. Verify Healthcheck
 
    - General Healthcheck: [http://localhost:5000/healthcheck/](http://localhost:5000/healthcheck/)
-   - Database Tables: [http://localhost:5000/db-check/](http://localhost:5000/db-check/)  
+   - Database Tables: [http://localhost:5000/db-check](http://localhost:5000/db-check/)  
      (should display `["alembic_version", "users"]` after migration)
    - Auth Routes Status: [http://localhost:5000/auth/status](http://localhost:5000/auth/status)  
      (should return `{"success": true, "data": {"auth_status": "ready"}, "message": "Authentication routes are live and responding."}`)
