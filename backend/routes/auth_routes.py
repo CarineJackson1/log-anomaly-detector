@@ -4,6 +4,7 @@ from schemas.user_schema import UserSchema
 from schemas.login_schema import LoginSchema
 from models.user_model import User
 from database import db
+from sqlaclhemy.exc import IntegrityError
 
 # Initialize the UserSchema for serialization and deserialization
 # This schema will be used to validate and serialize user data in API requests and responses.
@@ -40,10 +41,25 @@ def status():
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
+    # Validate the incoming data using the UserSchema
+    if User.query.filter_by(username=data.get('username')).first():
+        return jsonify({"error": "Username already exists"}), 400
+    if User.query.filter_by(email=data.get('email')).first():
+        return jsonify({"error": "Email already exists"}), 400
+    
+    # Load the data into the UserSchema
     user = user_schema.load(data)
+    # Add the new user to the database session
     db.session.add(user)
-    db.session.commit()
-    return jsonify(user_schema.dump(user)), 201
+
+    # Attempt to commit the new user to the database
+    # If there is an integrity error (e.g., duplicate entry), rollback the session and
+    try:
+        db.session.commit()
+        return jsonify(user_schema.dump(user)), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "User registration failed due to an integrity error."}), 400
 
 # Login endpoint for user authentication
 # This endpoint expects a JSON payload with email and password, verifies the credentials, and returns a JWT token if successful.
