@@ -1,0 +1,37 @@
+## 📊 Security Workflow Overview
+
+```mermaid
+flowchart LR
+    subgraph DEP[Dependabot Updates]
+        A[Python (pip)]
+        B[JavaScript (npm)]
+        C[Docker Images]
+        D[GitHub Actions]
+    end
+
+    subgraph SEC[Security Scans]
+        E[CodeQL Analysis]
+        F[Snyk Scan]
+    end
+
+    subgraph PR[Pull Request Review]
+        G[Security Leads Review]
+        H[Auto-Merge if Label Present]
+    end
+
+    subgraph BR[Branch Flow]
+        I[develop branch]
+        J[main branch]
+    end
+
+    A --> E
+    B --> E
+    C --> E
+    D --> E
+
+    E --> F
+    F --> G
+    G --> H
+
+    H --> I
+    I -->|Promote via PR| J
