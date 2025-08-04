@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, create_access_token
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 from schemas.user_schema import UserSchema
 from schemas.login_schema import LoginSchema
 from models.user_model import User
@@ -78,3 +78,24 @@ def login():
         # This ensures that the user receives feedback on why the login failed.
         return jsonify({"error": "Invalid email or password"}), 401
 
+# Endpoint to get the current user's details
+# This endpoint requires a valid JWT token and returns the user's information.
+@auth_bp.route('/me', methods=['GET'])
+# This route is protected by JWT authentication
+# It ensures that only authenticated users can access their own details.
+@jwt_required()
+def get_current_user():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    # If the user is found, return their details.
+    # This allows the client to retrieve their own user information securely.
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    # Serialize the user data using the UserSchema
+    # This ensures that the response format is consistent and includes only the necessary fields.
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role.value
+    }), 200
