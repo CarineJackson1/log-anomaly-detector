@@ -1,4 +1,11 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
+from schemas.user_schema import UserSchema
+from models.user_model import User
+from database import db
+
+# Initialize the UserSchema for serialization and deserialization
+# This schema will be used to validate and serialize user data in API requests and responses.
+user_schema = UserSchema()
 
 # Create a Blueprint for authentication routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -22,6 +29,16 @@ def status():
         "message": "Authentication routes are live and responding."
     }), 200
     
+# Registration endpoint to create a new user
+# This endpoint expects a JSON payload with user details and creates a new user in the database.
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    user = user_schema.load(data)
+    db.session.add(user)
+    db.session.commit()
+    return user_schema.jsonify(user), 201
+
 # Placeholder endpoints for future implementation
 # login endpoint
 @auth_bp.route('/login', methods=['POST'])
