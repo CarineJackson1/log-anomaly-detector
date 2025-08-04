@@ -7,6 +7,7 @@ class UserSchema(Schema):
     id = fields.Int(dump_only=True)
     username = fields.Str(required=True, validate=validate.Length(min=3, max=50))
     email = fields.Email(required=True, validate=validate.Length(max=120))
+    password = fields.Str(required=True, load_only=True, validate=validate.Length(min=6))
     role = fields.Str(
         required=False,
         validate=validate.OneOf([role.value for role in UserRole]),
@@ -15,10 +16,12 @@ class UserSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
-    # This method is called after deserialization to convert the role string to UserRole enum
-    # and create a User instance.
+    # This method is called after loading data to create a User instance.
+    # It hashes the password and sets the role based on the provided value.
     @post_load
     def make_user(self, data, **kwargs):
-        if 'role' in data and isinstance(data['role'], str):
-            data['role'] = UserRole(data['role'])
-        return User(**data)
+        role_value = data.pop('role', UserRole.LEARNER.value)
+        user = User(**data)
+        user.role = UserRole(role_value)
+        user.set_password(data['password'])  # Hash password
+        return user
