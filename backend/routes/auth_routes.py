@@ -4,7 +4,8 @@ from schemas.user_schema import UserSchema
 from schemas.login_schema import LoginSchema
 from models.user_model import User
 from database import db
-from sqlaclhemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError
+from utils.response_helpers import success_response
 
 # Initialize the UserSchema for serialization and deserialization
 # This schema will be used to validate and serialize user data in API requests and responses.
@@ -21,21 +22,16 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 # This route can be used to check if the auth service is running
 @auth_bp.route('/', methods=['GET'])
 def root():
-    return jsonify({
-        "success": True,
-        "data": {"auth_status": "ready"},
-        "message": "Authentication blueprint is active."
-    }), 200
+    return success_response(message="Authentication routes are live and responding.")
 
+# Health check endpoint
 # Status endpoint to check if the auth service is operational
 @auth_bp.route('/status', methods=['GET'])
 def status():
-    return jsonify({
-        "success": True,
-        "data": {"auth_status": "ready"},
-        "message": "Authentication routes are live and responding."
-    }), 200
-    
+    return success_response({
+        "auth_status": "ready"
+    })
+
 # Registration endpoint to create a new user
 # This endpoint expects a JSON payload with user details and creates a new user in the database.
 @auth_bp.route('/register', methods=['POST'])
@@ -43,10 +39,10 @@ def register():
     data = request.get_json()
     # Validate the incoming data using the UserSchema
     if User.query.filter_by(username=data.get('username')).first():
-        return jsonify({"error": "Username already exists"}), 400
+        return jsonify({"status": "error", "message": "Username already exists"}), 400
     if User.query.filter_by(email=data.get('email')).first():
-        return jsonify({"error": "Email already exists"}), 400
-    
+        return jsonify({"status": "error", "message": "Email already exists"}), 400
+
     # Load the data into the UserSchema
     user = user_schema.load(data)
     # Add the new user to the database session
@@ -56,10 +52,10 @@ def register():
     # If there is an integrity error (e.g., duplicate entry), rollback the session and
     try:
         db.session.commit()
-        return jsonify(user_schema.dump(user)), 201
+        return success_response(user_schema.dump(user), message="User registered successfully", status_code=201)
     except IntegrityError:
         db.session.rollback()
-        return jsonify({"error": "User registration failed due to an integrity error."}), 400
+        return jsonify({"status": "error", "message": "User registration failed due to an integrity error."}), 400
 
 # Login endpoint for user authentication
 # This endpoint expects a JSON payload with email and password, verifies the credentials, and returns a JWT token if successful.
@@ -70,7 +66,7 @@ def login():
     # If there are validation errors, return them with a 400 status code.
     # This ensures that the input data meets the required format and constraints.
     if errors:
-        return jsonify(errors), 400
+        return jsonify({"status": "error", "message": "Invalid input.", "details": errors}), 400
 
     # Find the user by email
     # If the user exists and the password is correct, create a JWT token.
@@ -80,19 +76,14 @@ def login():
         access_token = create_access_token(identity=user.id)
         # Return the token and user details in the response.
         # This allows the client to use the token for subsequent authenticated requests.
-        return jsonify({
+        return success_response({
             "access_token": access_token,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "role": user.role.value
-            }
-        }), 200
+            "user": user_schema.dump(user)
+        }, message="Login successful", status_code=200)
     else:
         # If the user does not exist or the password is incorrect, return an error message.
         # This ensures that the user receives feedback on why the login failed.
-        return jsonify({"error": "Invalid email or password"}), 401
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
 
 # Endpoint to get the current user's details
 # This endpoint requires a valid JWT token and returns the user's information.
@@ -106,12 +97,12 @@ def get_current_user():
     # If the user is found, return their details.
     # This allows the client to retrieve their own user information securely.
     if not user:
-        return jsonify({"error": "User not found"}), 404
+        return jsonify({"status": "error", "message": "User not found"}), 404
     # Serialize the user data using the UserSchema
     # This ensures that the response format is consistent and includes only the necessary fields.
-    return jsonify({
+    return success_response({
         "id": user.id,
         "username": user.username,
         "email": user.email,
         "role": user.role.value
-    }), 200
+    }, message="User retrieved successfully")

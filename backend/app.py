@@ -5,7 +5,7 @@ from config import DevelopmentConfig
 from routes.healthcheck_routes import healthcheck_bp
 from database import db, init_db
 from routes.auth_routes import auth_bp
-from error_handlers import register_error_handlers
+from utils.error_handlers import register_error_handlers
 
 # Create Flask application instance
 def create_app():
