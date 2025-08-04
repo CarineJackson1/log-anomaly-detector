@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in this project, please report it responsibly by emailing **security@yourdomain.com** with the following details:
+If you discover a security vulnerability in this project, please report it responsibly by emailing us with the following details:
 
 - Description of the vulnerability  
 - Steps to reproduce the issue  
