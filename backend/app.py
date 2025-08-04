@@ -1,5 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from config import DevelopmentConfig
 from routes.healthcheck_routes import healthcheck_bp
 from database import db, init_db
@@ -11,7 +12,15 @@ def create_app():
     
     CORS(app, resources={r"/auth/*": {"origins": "*"}})
     
+    # Configure the application with development settings
     app.config.from_object(DevelopmentConfig)
+    
+    # JWT configuration
+    # This secret key should be kept secure and not hardcoded in production.
+    app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # This will be replaced with a secure env variable
+    # Initialize JWT Manager
+    # This manager will handle JWT creation and verification.
+    jwt = JWTManager(app)
     
     # Initialize the database
     init_db(app)
