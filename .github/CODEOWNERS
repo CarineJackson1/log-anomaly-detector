@@ -1,4 +1,5 @@
-# Require review from security lead for dependency or CI changes
-/.github/dependabot.yml  @CarineJackson1
-.github/workflows/       @CarineJackson1
-*.yml                    @CarineJackson1
+# Lead Security Reviewer first, secondary reviewer second
+/.github/dependabot.yml  @CarineJackson1 @sajanamhr21
+.github/workflows/       @CarineJackson1 @sajanamhr21
+*.yml                    @CarineJackson1 @sajanamhr21
+Dockerfile               @CarineJackson1 @sajanamhr21
