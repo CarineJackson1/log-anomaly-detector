@@ -1,5 +1,5 @@
-# Lead Security Reviewer first, secondary reviewer second
-/.github/dependabot.yml  @CarineJackson1 @sajanamhr21
-.github/workflows/       @CarineJackson1 @sajanamhr21
-*.yml                    @CarineJackson1 @sajanamhr21
-Dockerfile               @CarineJackson1 @sajanamhr21
+# Automatically request review from security leads on dependency-related updates
+/package.json @CarineJackson1 @sajanamhr21
+/requirements.txt @CarineJackson1 @sajanamhr21
+.github/workflows/ @CarineJackson1 @sajanamhr21
+/Dockerfile @CarineJackson1 @sajanamhr21
