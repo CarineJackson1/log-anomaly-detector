@@ -28,6 +28,11 @@ We support security fixes for the latest stable release of this project. Please 
 
 ---
 
+## 📊 Security Workflow Overview
+<img width="3840" height="986" alt="diagram-security-workflow" src="https://github.com/user-attachments/assets/a53efae2-0c78-4f49-a6f0-8bfee9c1b25c" />
+
+---
+
 ## Disclosures
 
 Once a vulnerability is resolved, we may publicly disclose the issue to inform users and the community, unless a request for confidentiality is made.
@@ -83,46 +88,3 @@ This repository uses an automated **SecDevOps workflow** to keep dependencies up
 
 ---
 
-## 📊 Security Workflow Overview
-
-```mermaid
-flowchart LR
-    subgraph DEP[Dependabot Updates]
-        A([Python (pip)]):::auto
-        B([JavaScript (npm)]):::auto
-        C([Docker Images]):::auto
-        D([GitHub Actions]):::auto
-    end
-
-    subgraph SEC[Security Scans]
-        E([CodeQL Analysis]):::security
-        F([Snyk Scan]):::security
-    end
-
-    subgraph PR[Pull Request Review]
-        G([Security Leads Review]):::manual
-        H([Auto-Merge if Label Present]):::auto
-    end
-
-    subgraph BR[Branch Flow]
-        I([develop branch]):::branch
-        J([main branch]):::branch
-    end
-
-    A --> E
-    B --> E
-    C --> E
-    D --> E
-
-    E --> F
-    F --> G
-    G --> H
-
-    H --> I
-    I -->|Promote via PR| J
-
-    classDef auto fill:#d4f4dd,stroke:#2b7a0b,stroke-width:2px;
-    classDef security fill:#fff4d4,stroke:#ffcc00,stroke-width:2px;
-    classDef manual fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
-    classDef branch fill:#ddeaff,stroke:#1565c0,stroke-width:2px;
-```
