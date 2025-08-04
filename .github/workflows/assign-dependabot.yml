@@ -1,4 +1,4 @@
-name: Assign Dependabot PRs
+name: Assign Dependabot Reviewers and Assignees
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
 
 jobs:
   assign:
-    runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
     steps:
       - name: Assign reviewers and assignees
         uses: kentaro-m/auto-assign-action@v1
