@@ -17,7 +17,7 @@ If you discover a security vulnerability, **please do not open a public issue**.
 ### 1. Primary Contact – Lead Security Reviewer
 - **Name:** Carine Jackson  
 - **GitHub:** [@CarineJackson1](https://github.com/CarineJackson1)  
-- **Email:** security@yourdomain.com (replace with actual email)  
+- **Email:** carinejackson48@gmail.com (replace with actual email)  
 - **Role:** Lead Security Reviewer
 
 ### 2. Secondary Contact – Security Reviewer
