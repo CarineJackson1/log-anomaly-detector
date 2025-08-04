@@ -5,6 +5,7 @@ from config import DevelopmentConfig
 from routes.healthcheck_routes import healthcheck_bp
 from database import db, init_db
 from routes.auth_routes import auth_bp
+from error_handlers import register_error_handlers
 
 # Create Flask application instance
 def create_app():
@@ -29,14 +30,9 @@ def create_app():
     app.register_blueprint(healthcheck_bp)
     app.register_blueprint(auth_bp)
     
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        return jsonify({"status": "error", "message": "Route not found"}), 404
-    
-    @app.errorhandler(500)
-    def internal_error(error):
-        return jsonify({"status": "error", "message": "Internal server error"}), 500
+    # Register error handlers
+    # This function will register custom error handlers for the application.
+    register_error_handlers(app)
 
     @app.route("/")
     def home():
@@ -49,8 +45,6 @@ def create_app():
 
     return app
     
-
-
 # Run the application
 if __name__ == "__main__":
     app = create_app()
