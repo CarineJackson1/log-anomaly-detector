@@ -125,6 +125,4 @@ flowchart LR
     classDef security fill:#fff4d4,stroke:#ffcc00,stroke-width:2px;
     classDef manual fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
     classDef branch fill:#ddeaff,stroke:#1565c0,stroke-width:2px;
-
-Thank you for helping us keep this project secure!
 ```
