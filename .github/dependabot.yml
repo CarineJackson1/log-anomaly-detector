@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # Language/runtime dependencies (example: Python)
+  - package-ecosystem: "pip"
+    directory: "/"  # adjust if requirements.txt or pyproject.toml lives elsewhere
+    schedule:
+      interval: "weekly"         # options: "daily", "weekly", "monthly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "CarineJackson1"         # replace with your GitHub username or team
+    assignees:
+      - "CarineJackson1"
+    commit-message:
+      prefix: "deps"
+
+  # JavaScript / Node
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "CarineJackson1"
+    assignees:
+      - "CarineJackson1"
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+
+  # Dockerfile base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
