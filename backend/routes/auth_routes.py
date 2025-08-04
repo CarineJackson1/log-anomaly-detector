@@ -43,7 +43,7 @@ def register():
     user = user_schema.load(data)
     db.session.add(user)
     db.session.commit()
-    return user_schema.jsonify(user), 201
+    return jsonify(user_schema.dump(user)), 201
 
 # Login endpoint for user authentication
 # This endpoint expects a JSON payload with email and password, verifies the credentials, and returns a JWT token if successful.
