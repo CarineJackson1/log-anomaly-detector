@@ -167,6 +167,79 @@ To ensure consistent and smooth collaboration:
 
 ---
 
+## 🔑 Authentication Endpoints
+
+| Method | Endpoint       | Description                        | Auth Required |
+|--------|---------------|------------------------------------|---------------|
+| POST   | `/auth/register` | Register a new user                 | ❌             |
+| POST   | `/auth/login`    | Authenticate and receive JWT token  | ❌             |
+| GET    | `/auth/me`       | Get details of the current user     | ✅             |
+| GET    | `/auth/status`   | Health check for auth routes        | ❌             |
+
+---
+
+## 🧪 Testing the Authentication API
+
+### 1. Register User
+**POST** `/auth/register`  
+```json
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "Password123",
+  "role": "admin"
+}
+
+Response:
+{
+  "status": "success",
+  "message": "User registered successfully",
+  "data": {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "role": "admin",
+    "created_at": "...",
+    "updated_at": "..."
+  }
+}
+
+2. Login
+POST /auth/login
+{
+  "email": "john@example.com",
+  "password": "Password123"
+}
+Response:
+{
+  "status": "success",
+  "message": "Login successful",
+  "data": {
+    "access_token": "JWT_TOKEN_HERE",
+    "user": { ... }
+  }
+}
+
+3. Current User
+GET /auth/me
+Header: Authorization: Bearer JWT_TOKEN_HERE
+
+Response: 
+{
+  "status": "success",
+  "message": "User retrieved successfully",
+  "data": {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "role": "admin"
+  }
+}
+
+
+
+---
+
 ## Project Documentation
 - [PRD in Notion](https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link)
 - [Team workspace](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
