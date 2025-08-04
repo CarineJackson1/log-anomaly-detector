@@ -48,4 +48,82 @@ Once a vulnerability is resolved, we may publicly disclose the issue to inform u
 - **Email:** security@yourdomain.com  
 - **Role:** Secondary Security Reviewer
 
+## 🔒 Security & Dependency Management
+
+This repository uses an automated **SecDevOps workflow** to keep dependencies updated and secure.
+
+### 1. Dependency Updates (Dependabot)
+- **Frequency:** Weekly for Python (`pip`), JavaScript (`npm`), Docker, and GitHub Actions workflows.
+- **Labels:** Each update PR gets:
+  - `dependencies` (marks as a dependency update)
+  - `auto-merge` (optional – triggers automatic merging)
+- **Reviewers:** Security leads (`@CarineJackson1`, `@sajanamhr21`) are auto-assigned for review.
+
+### 2. Auto-Merge Rules
+- Only **Dependabot PRs** with the `auto-merge` label will be merged automatically.
+- Auto-merge happens **after** all required checks pass (build, tests, security scans).
+- Major version updates **must be reviewed manually** before merging.
+
+### 3. Security Scans
+- **CodeQL Analysis** (`.github/workflows/codeql.yml`)
+  - Runs on every PR and weekly.
+  - Detects vulnerabilities in JavaScript and Python code.
+- **Snyk Scan** (`.github/workflows/snyk.yml`)
+  - Runs on every PR and weekly.
+  - Detects insecure dependencies in both JavaScript and Python.
+  - Requires `SNYK_TOKEN` in repo secrets.
+
+### 4. Branch Protection
+- **`develop` branch:**
+  - Requires passing build/tests, CodeQL, and Snyk before merging.
+  - Requires PR reviews from code owners.
+- **`main` branch:**
+  - Changes can only come from `develop`.
+  - Requires passing all security scans and build/tests before merging.
+
+---
+
+## 📊 Security Workflow Overview
+
+```mermaid
+flowchart LR
+    subgraph DEP[Dependabot Updates]
+        A([Python (pip)]):::auto
+        B([JavaScript (npm)]):::auto
+        C([Docker Images]):::auto
+        D([GitHub Actions]):::auto
+    end
+
+    subgraph SEC[Security Scans]
+        E([CodeQL Analysis]):::security
+        F([Snyk Scan]):::security
+    end
+
+    subgraph PR[Pull Request Review]
+        G([Security Leads Review]):::manual
+        H([Auto-Merge if Label Present]):::auto
+    end
+
+    subgraph BR[Branch Flow]
+        I([develop branch]):::branch
+        J([main branch]):::branch
+    end
+
+    A --> E
+    B --> E
+    C --> E
+    D --> E
+
+    E --> F
+    F --> G
+    G --> H
+
+    H --> I
+    I -->|Promote via PR| J
+
+    classDef auto fill:#d4f4dd,stroke:#2b7a0b,stroke-width:2px;
+    classDef security fill:#fff4d4,stroke:#ffcc00,stroke-width:2px;
+    classDef manual fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
+    classDef branch fill:#ddeaff,stroke:#1565c0,stroke-width:2px;
+
 Thank you for helping us keep this project secure!
