@@ -20,8 +20,10 @@ class UserSchema(Schema):
     # It hashes the password and sets the role based on the provided value.
     @post_load
     def make_user(self, data, **kwargs):
-        role_value = data.pop('role', UserRole.LEARNER.value)
-        user = User(**data)
-        user.role = UserRole(role_value)
-        user.set_password(data['password'])  # Hash password
+        password = data.pop('password') # Extract the password for hashing
+        role_value = data.pop('role', UserRole.LEARNER.value) # Default to LEARNER if not provided
+        
+        user = User(**data) # Create a User instance with the provided data
+        user.role = UserRole(role_value) # Set the role using the UserRole enum
+        user.set_password(password)  # Hash password
         return user
