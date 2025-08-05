@@ -1,0 +1,24 @@
+name: Semgrep Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep and save SARIF
+        run: semgrep --config=p/ci --sarif-output=semgrep.sarif
+
+      - name: Upload semgrep results
+        uses: github/code-scanning-upload@v1
+        with:
+          sarif_file: semgrep.sarif
