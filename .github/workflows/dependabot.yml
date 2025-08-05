@@ -4,44 +4,42 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "auto-merge"
-    commit-message:
-      prefix: "deps"
-    versioning-strategy: increase
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "auto-merge"
-    commit-message:
-      prefix: "deps"
-    versioning-strategy: increase
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "auto-merge"
-    commit-message:
-      prefix: "deps"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "auto-merge"
-    commit-message:
-      prefix: "deps"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
