@@ -1,0 +1,117 @@
+.mission {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 100vh;
+    padding: 4rem 3rem; /* Increased padding */
+    background: linear-gradient(to top, #000000, #07010c), linear-gradient(to bottom, #08010c, #0d0118);
+    color: #e0e0e0;
+}
+
+.mission-title {
+    font-size: 2.75rem; /* Slightly larger title */
+    color: #ffffff;
+    margin-bottom: 3.5rem; /* Increased space below the title */
+    text-align: center;
+    width: 100%;
+}
+
+.mission-content {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 5rem;              /* Tighter spacing */
+    flex-wrap: nowrap;      /* <-- prevent stacking */
+    max-width: 1300px;
+    width: 100%;
+}
+
+.mission-img {
+    height: 400px; /* Slightly larger image */
+    display: flex;
+    flex-shrink: 0;
+}
+
+.M-Img {
+    height: 400px; /* Match mission-img height */
+    object-fit: contain;
+}
+
+.mission-text-button-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    max-width: 600px; /* Increased max-width for the text column */
+    padding-top: 0.5rem; /* Slight padding to align text with image top more naturally */
+}
+
+.mission-description {
+    font-size: 1.35rem; /* Slightly larger font size for description */
+    color: #cccccc;
+    text-align: left;
+    margin-bottom: 2.5rem; /* Increased space between paragraphs */
+    line-height: 1.6; /* Improved line spacing for readability */
+}
+
+.missionbtn-wrapper {
+    width: auto;
+    display: flex;
+    align-self: flex-end;
+    margin: 5.5rem 0;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #6225E6;
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: visible;
+  transition: background-color 0.3s ease;
+}
+
+.cta:hover {
+  background-color: #5c6bc0;
+}
+
+.cta path {
+  fill: white;
+  transform-origin: center center;
+}
+
+/* Animation */
+@keyframes color_anim {
+  0% { fill: white; }
+  50% { fill: #FBC638; }
+  100% { fill: white; }
+}
+
+.cta:hover path.three {
+  animation: color_anim 1s infinite 0.2s;
+}
+.cta:hover path.one {
+  transform: translateX(0%);
+  animation: color_anim 1s infinite 0.6s;
+}
+.cta:hover path.two {
+  transform: translateX(0%);
+  animation: color_anim 1s infinite 0.4s;
+}
+
+/* Initial path positions */
+.cta path.one {
+  transition: 0.4s;
+  transform: translateX(-60%);
+}
+.cta path.two {
+  transition: 0.5s;
+  transform: translateX(-30%);
+}
