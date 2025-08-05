@@ -9,10 +9,8 @@ const LearnerForm: React.FC = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    firstName: "",
-    lastName: "",
-    phoneNumber: "",
-    userType: "learner",
+    name: "",
+    role: "learner",
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -42,8 +40,7 @@ const LearnerForm: React.FC = () => {
       newErrors.confirmPassword = "Passwords do not match.";
     }
 
-    if (!formData.firstName) newErrors.firstName = "First name is required.";
-    if (!formData.lastName) newErrors.lastName = "Last name is required.";
+    if (!formData.name) newErrors.firstName = "Name is required.";
 
     return newErrors;
   };
@@ -69,31 +66,17 @@ const LearnerForm: React.FC = () => {
           </h4>
           <form onSubmit={handleSubmit} noValidate>
             <div className="mb-3">
-              <label>First Name</label>
+              <label>Name</label>
               <input
                 type="text"
                 name="firstName"
                 className={`form-control ${
                   errors.firstName ? "is-invalid" : ""
                 }`}
-                value={formData.firstName}
+                value={formData.name}
                 onChange={handleChange}
               />
-              <div className="invalid-feedback">{errors.firstName}</div>
-            </div>
-
-            <div className="mb-3">
-              <label>Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                className={`form-control ${
-                  errors.lastName ? "is-invalid" : ""
-                }`}
-                value={formData.lastName}
-                onChange={handleChange}
-              />
-              <div className="invalid-feedback">{errors.lastName}</div>
+              <div className="invalid-feedback">{errors.name}</div>
             </div>
 
             <div className="mb-3">
@@ -106,17 +89,6 @@ const LearnerForm: React.FC = () => {
                 onChange={handleChange}
               />
               <div className="invalid-feedback">{errors.email}</div>
-            </div>
-
-            <div className="mb-3">
-              <label>Phone Number (optional)</label>
-              <input
-                type="tel"
-                name="phoneNumber"
-                className="form-control"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-              />
             </div>
 
             <div className="mb-3">

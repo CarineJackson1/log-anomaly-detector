@@ -1,11 +1,11 @@
 import axios from 'axios';
 import type { BaseUser, Learner, Employer } from '../types/types';
 
-const API_URL = 'https://your-api-url.com/api/register'; // TODO: Replace with actual API endpoint
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-export const registerUser = async (userData: BaseUser | Learner | Employer) => {
+export const registerUser = async (data: BaseUser | Learner | Employer) => {
   try {
-    const response = await axios.post(API_URL, userData);
+    const response = await axios.post(`${API_BASE}/auth/register`, data);
     return response.data;
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response?.data?.message) {
