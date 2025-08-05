@@ -29,7 +29,7 @@ We support security fixes for the latest stable release of this project. Please 
 ---
 
 ## 📊 Security Workflow Overview
-<img width="2461" height="1000" alt="security_workflow_diagram" src="https://github.com/user-attachments/assets/1155320e-6235-47ff-8297-76e8d5d918c6" />
+<img width="2461" height="2000" alt="security_workflow_diagram" src="https://github.com/user-attachments/assets/1155320e-6235-47ff-8297-76e8d5d918c6" />
 
 ---
 
