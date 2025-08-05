@@ -1,19 +1,12 @@
-name: Dependabot auto-merge
-
+name: Dependabot Auto-Merge
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-
+    types: [opened, synchronize]
 jobs:
-  auto-merge:
+  automerge:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
     steps:
-      - name: Dependabot auto-merge
-        uses: fastify/github-action-merge-dependabot@v3
+      - name: Dependabot Auto Merge
+        uses: fastify/github-action-merge-dependabot@v3.6.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          merge-method: squash
