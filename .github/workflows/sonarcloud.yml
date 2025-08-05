@@ -1,16 +1,41 @@
-name: SonarCloud Scan
+name: SonarCloud PR Analysis
+
 on:
   push:
-    branches: [develop]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [develop]
+    types: [opened, synchronize, reopened]
+
 jobs:
-  build:
-    name: SonarCloud
+  sonarcloud:
+    name: SonarCloud Scan
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=astroskill-lms-connector
+            -Dsonar.organization=AsroSkill
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+
+      - name: Upload analysis report
+        if: always()
+        run: echo "Analysis complete."
