@@ -1,0 +1,11 @@
+name: OWASP ZAP Scan
+on:
+  workflow_dispatch:
+jobs:
+  zap_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ZAP Scan
+        uses: zaproxy/action-full-scan@v0.4.0
+        with:
+          target: "http://localhost:3000"
