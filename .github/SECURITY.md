@@ -87,9 +87,3 @@ This repository uses an automated **SecDevOps workflow** to keep dependencies up
   - Requires passing all security scans and build/tests before merging.
 
 ---
-# AstroSkill LMS Connector
-
-[![CodeQL](https://github.com/CarineJackson1/astroskill-lms-connector/actions/workflows/codeql.yml/badge.svg)](https://github.com/CarineJackson1/astroskill-lms-connector/security/code-scanning)
-[![Snyk Security](https://snyk.io/test/github/CarineJackson1/astroskill-lms-connector/badge.svg)](https://snyk.io/test/github/CarineJackson1/astroskill-lms-connector)
-
-A full-stack platform that connects aerospace learners with employers by tracking training progress from Moodle and enabling talent matching.
