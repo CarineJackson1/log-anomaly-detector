@@ -1,49 +1,28 @@
-# .semgrep.yml
-# Semgrep configuration for security-focused scanning
-# Repo: AstroSkill/astroskill-lms-connector
+name: 🛡 Semgrep Security Scan
 
-version: 1
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
 
-# Pull curated rules from the Semgrep registry
-rules:
-  - id: owasp-top-ten
-    pattern: >
-      import .*os.*; os.system(...)
-    message: "Avoid os.system; use subprocess.run instead for safer execution"
-    severity: ERROR
-    languages: [python]
+jobs:
+  semgrep:
+    name: Run Semgrep
+    runs-on: ubuntu-latest
 
-  - id: insecure-js-eval
-    pattern: eval(...)
-    message: "Avoid using eval() as it can lead to code injection vulnerabilities"
-    severity: ERROR
-    languages: [javascript]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
 
-  - id: no-hardcoded-secrets
-    patterns:
-      - pattern: $SECRET = "..."
-    message: "Hardcoded secrets (e.g., API keys or passwords) detected"
-    severity: ERROR
-    languages: [python, javascript, typescript]
+      - name: 🛠 Set up Python (for Semgrep)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-# You can also include curated rulesets from the Semgrep Registry:
-# These are reliable, community-maintained rules.
-# https://semgrep.dev/explore
+      - name: 🧪 Install Semgrep
+        run: pip install semgrep
 
-# OWASP Top 10 + SAST for JS, TS, Python, Docker, etc.
-include:
-  - semgrep.yml
-  - p/default
-  - p/owasp-top-ten
-  - p/security-audit
-  - p/secrets
-  - p/python
-  - p/javascript
-  - p/dockerfile
-  - p/html
-
-# Customize behavior in CI
-# Fail if any errors are found
-ci:
-  fail_on_warn: false
-  fail_on_error: true
+      - name: 🧹 Run Semgrep with custom config
+        run: semgrep --config .semgrep.yml --error
