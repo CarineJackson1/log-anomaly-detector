@@ -1,14 +1,17 @@
-name: Bandit Security Scan (Fail on High Only)
+name: Bandit Security Scan (Fail on High Only with Confidence Filter & Check Annotations)
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   bandit:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write  # Needed for check annotations
 
     steps:
       - name: Checkout code
@@ -27,25 +30,150 @@ jobs:
       - name: Run Bandit and save JSON report
         run: bandit -r . -f json -o bandit-report.json
 
-      - name: Check for high severity issues
+      - name: Generate filtered Bandit report and comment content
+        id: bandit-scan
         run: |
           python - <<EOF
-          import json, sys
+          import json, sys, os
+
+          MIN_CONFIDENCE = {'low': 0, 'medium': 1, 'high': 2}
+          CONFIDENCE_MAP = {'low': 0, 'medium': 1, 'high': 2}
 
           with open("bandit-report.json") as f:
               data = json.load(f)
 
-          high_issues = [
-              issue for issue in data.get("results", [])
-              if issue.get("issue_severity", "").lower() == "high"
-          ]
+          def conf_to_num(conf):
+              return CONFIDENCE_MAP.get(conf.lower(), 0)
 
-          print(f"Found {len(high_issues)} high-severity issue(s).")
+          high_issues = []
+          all_issues = []
+
+          for issue in data.get("results", []):
+              conf_num = conf_to_num(issue.get("issue_confidence", "").lower())
+              # Only include Medium or High confidence
+              if conf_num < MIN_CONFIDENCE['medium']:
+                  continue
+
+              entry = f"- `{issue['filename']}:{issue['line_number']}`: {issue['issue_text']} (**{issue['issue_severity']}**, {issue['issue_confidence']})"
+              all_issues.append({
+                  'text': entry,
+                  'filename': issue['filename'],
+                  'line': issue['line_number'],
+                  'severity': issue['issue_severity'].lower(),
+                  'confidence': issue['issue_confidence'].lower(),
+                  'issue_text': issue['issue_text'],
+                  'test_id': issue.get('test_id', 'Bandit'),
+              })
+
+              if issue['issue_severity'].lower() == 'high':
+                  high_issues.append(entry)
+
+          comment = []
+          comment.append("## 🔒 Bandit Security Scan Results (Confidence: Medium+)")
+          if all_issues:
+              comment.append(f"**Total Issues Found**: {len(all_issues)}\n")
+              for issue in all_issues:
+                  comment.append(issue['text'])
+          else:
+              comment.append("✅ No issues found.")
+
+          run_url = os.getenv('GITHUB_SERVER_URL') + '/' + os.getenv('GITHUB_REPOSITORY') + '/actions/runs/' + os.getenv('GITHUB_RUN_ID')
+          comment.append("\n---\n")
+          comment.append(f"📄 Download the full Bandit report from the **Artifacts** section of the [Actions run page]({run_url}).")
+
+          with open("bandit-comment.md", "w") as out:
+              out.write("\n".join(comment))
+
+          # Save filtered issues to JSON for the check annotation step
+          import pathlib
+          pathlib.Path("filtered-issues.json").write_text(json.dumps(all_issues))
 
           if high_issues:
-              for issue in high_issues:
-                  print(f"- {issue['filename']}:{issue['line_number']} - {issue['issue_text']}")
               sys.exit(1)
-          else:
-              print("No high-severity issues found.")
           EOF
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+      - name: Upload filtered issues JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: filtered-bandit-issues
+          path: filtered-issues.json
+
+      - name: Comment on PR with Bandit summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const commentBody = fs.readFileSync('bandit-comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Post Bandit issues as GitHub Check annotations
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issues = JSON.parse(fs.readFileSync('filtered-issues.json', 'utf8'));
+
+            // Create check run initially in progress
+            const checkRun = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: "Bandit Security Scan",
+              head_sha: context.sha,
+              status: "in_progress",
+            });
+
+            // Prepare annotations (GitHub max 50)
+            const maxAnnotations = 50;
+            const annotations = [];
+
+            for (let i = 0; i < Math.min(issues.length, maxAnnotations); i++) {
+              const issue = issues[i];
+
+              // Map severity to annotation level
+              let annotation_level = "notice";
+              if (issue.severity === "high") {
+                annotation_level = "failure";
+              } else if (issue.severity === "medium") {
+                annotation_level = "warning";
+              }
+
+              annotations.push({
+                path: issue.filename,
+                start_line: issue.line,
+                end_line: issue.line,
+                annotation_level: annotation_level,
+                message: issue.issue_text,
+                title: `[${issue.test_id}] ${issue.severity.toUpperCase()} severity`,
+              });
+            }
+
+            // Fail if any high severity found
+            const hasHigh = issues.some(issue => issue.severity === "high");
+            const conclusion = hasHigh ? "failure" : "success";
+
+            // Complete check run with annotations
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: checkRun.data.id,
+              status: "completed",
+              conclusion: conclusion,
+              output: {
+                title: "Bandit Security Scan Results",
+                summary: `${issues.length} issues found (Medium+ confidence).`,
+                annotations: annotations,
+              },
+            });
