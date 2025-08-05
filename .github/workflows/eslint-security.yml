@@ -1,20 +1,26 @@
 name: ESLint Security Scan
+
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
   pull_request:
-    branches: [develop]
+    branches:
+      - develop
 
 jobs:
   eslint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install dependencies
         run: npm install
-        working-directory: frontend
 
       - name: Run ESLint with security rules
-        run: npx eslint . --ext .js,.jsx,.ts,.tsx --plugin security --rule 'security/detect-object-injection: 2'
-        working-directory: frontend
+        run: |
+          npx eslint . \
+            --ext .js,.jsx,.ts,.tsx \
+            --plugin security \
+            --rule 'security/detect-object-injection: 2'
