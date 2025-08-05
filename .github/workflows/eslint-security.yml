@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install dependencies (including ESLint security plugin)
+      - name: Install dependencies
         run: npm install
         working-directory: frontend
 
