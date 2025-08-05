@@ -6,6 +6,21 @@ updates:
       interval: "daily"
     labels:
       - "auto-merge"
+      - "dependencies"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    security-updates-only: true
+    commit-message:
+      prefix: "deps"
+      include-scope: true
+    open-pull-requests-limit: 5
+    auto-merge: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "npm"
     directory: "/"
@@ -15,9 +30,20 @@ updates:
     labels:
       - "dependencies"
       - "auto-merge"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
     commit-message:
       prefix: "deps"
+      include-scope: true
     versioning-strategy: increase
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -27,8 +53,19 @@ updates:
     labels:
       - "dependencies"
       - "auto-merge"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
     commit-message:
       prefix: "deps"
+      include-scope: true
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "docker"
     directory: "/"
@@ -38,5 +75,16 @@ updates:
     labels:
       - "dependencies"
       - "auto-merge"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
     commit-message:
       prefix: "deps"
+      include-scope: true
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto
