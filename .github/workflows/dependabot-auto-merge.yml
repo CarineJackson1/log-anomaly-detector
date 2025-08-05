@@ -1,39 +1,19 @@
-name: Dependabot Auto Merge
+name: Dependabot auto-merge
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
+    if: github.actor == 'dependabot[bot]'
     steps:
-      - name: Check for auto-merge label
-        id: label-check
-        run: |
-          labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | tr '\n' ' ')
-          if echo "$labels" | grep -qw "auto-merge"; then
-            echo "has_auto_merge=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_auto_merge=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Enable auto-merge via GitHub native support (requires branch protection with required checks)
-        if: steps.label-check.outputs.has_auto_merge == 'true'
-        uses: peter-evans/enable-pull-request-automerge@v3
+      - name: Dependabot auto-merge
+        uses: fastify/github-action-merge-dependabot@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          pull-request-number: ${{ github.event.pull_request.number }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           merge-method: squash
-
-      - name: Comment on PR about auto-merge
-        if: steps.label-check.outputs.has_auto_merge == 'true'
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ✅ Non-major dependency update detected. Auto-merge enabled; it will merge once all required checks pass.
