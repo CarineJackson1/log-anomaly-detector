@@ -21,7 +21,7 @@ jobs:
 
       - name: Assign reviewers and assignees
         if: steps.label-check.outputs.has_dependencies == 'true'
-        uses: kentaro-m/auto-assign-action@v1
+        uses: kentaro-m/auto-assign-action@4c58f176cc75ea8016a6b68fa582e75e878c01a1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reviewers: CarineJackson1,sajanamhr21
