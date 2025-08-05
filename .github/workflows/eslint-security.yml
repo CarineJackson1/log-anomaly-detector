@@ -1,5 +1,4 @@
 name: ESLint Security Scan
-
 on:
   push:
     branches: [develop]
@@ -12,11 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install dependencies (including ESLint security plugin)
         run: npm install
-
-      - name: Install ESLint security plugin
-        run: npm install eslint-plugin-security --save-dev
+        working-directory: frontend
 
       - name: Run ESLint with security rules
-        run: "npx eslint . --ext .js,.jsx,.ts,.tsx --plugin security --rule 'security/detect-object-injection: 2'"
+        run: npx eslint . --ext .js,.jsx,.ts,.tsx --plugin security --rule 'security/detect-object-injection: 2'
+        working-directory: frontend
