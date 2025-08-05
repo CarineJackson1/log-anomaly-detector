@@ -1,6 +1,6 @@
 # AstroSkill LMS Connector
 
-[[🛡 Semgrep Security Scan](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/semgrep.yml/badge.svg)][(https://github.com/AstroSkill/astroskill-lms-connector/actions/workflows/semgrep.yml)]
+[🛡[Semgrep Security Scan](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/semgrep.yml/badge.svg)](https://github.com/CarineJackson1/astroskill-lms-connector-carine/actions/workflows/semgrep.yml)
 [![🆘 CodeQL](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/codeql.yml/badge.svg)](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/codeql.yml)
 [![🤖 Dependabot Updates](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/AstroSkill/astroskill-lms-connector/network/updates)
 [![🚨 Security Policy](https://img.shields.io/badge/Security-Policy-blue?logo=github)](./SECURITY.md)
