@@ -3,3 +3,7 @@
 /requirements.txt @CarineJackson1 @sajanamhr21
 .github/workflows/ @CarineJackson1 @sajanamhr21
 /Dockerfile @CarineJackson1 @sajanamhr21
+# Request reviews from lead security team on workflows, dependabot, and security files
+.github/workflows/*       @CarineJackson1 @sajanamhr21
+.github/dependabot.yml    @CarineJackson1 @sajanamhr21
+SECURITY.md              @CarineJackson1 @sajanamhr21
