@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      checks: write  # Needed for check annotations
+      checks: write
 
     steps:
       - name: Checkout code
@@ -28,7 +28,13 @@ jobs:
           pip install bandit
 
       - name: Run Bandit and save JSON report
-        run: bandit -r . -f json -o bandit-report.json
+        run: |
+          if find . -name "*.py" | grep -q .; then
+            bandit -r . -f json -o bandit-report.json
+          else
+            echo '{"results": []}' > bandit-report.json
+            echo "⚠️ No Python files found to scan. Generated empty report."
+          fi
 
       - name: Generate filtered Bandit report and comment content
         id: bandit-scan
@@ -50,7 +56,6 @@ jobs:
 
           for issue in data.get("results", []):
               conf_num = conf_to_num(issue.get("issue_confidence", "").lower())
-              # Only include Medium or High confidence
               if conf_num < MIN_CONFIDENCE['medium']:
                   continue
 
@@ -84,7 +89,6 @@ jobs:
           with open("bandit-comment.md", "w") as out:
               out.write("\n".join(comment))
 
-          # Save filtered issues to JSON for the check annotation step
           import pathlib
           pathlib.Path("filtered-issues.json").write_text(json.dumps(all_issues))
 
@@ -126,7 +130,6 @@ jobs:
             const fs = require('fs');
             const issues = JSON.parse(fs.readFileSync('filtered-issues.json', 'utf8'));
 
-            // Create check run initially in progress
             const checkRun = await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -135,14 +138,12 @@ jobs:
               status: "in_progress",
             });
 
-            // Prepare annotations (GitHub max 50)
             const maxAnnotations = 50;
             const annotations = [];
 
             for (let i = 0; i < Math.min(issues.length, maxAnnotations); i++) {
               const issue = issues[i];
 
-              // Map severity to annotation level
               let annotation_level = "notice";
               if (issue.severity === "high") {
                 annotation_level = "failure";
@@ -160,11 +161,9 @@ jobs:
               });
             }
 
-            // Fail if any high severity found
             const hasHigh = issues.some(issue => issue.severity === "high");
             const conclusion = hasHigh ? "failure" : "success";
 
-            // Complete check run with annotations
             await github.rest.checks.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
