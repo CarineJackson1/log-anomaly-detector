@@ -25,7 +25,7 @@ jobs:
       - name: Run Semgrep and produce SARIF
         run: semgrep --config=p/ci --sarif-output=semgrep.sarif
 
-      - name: Upload Semgrep results to GitHub Code Scanning
+      - name: Upload Semgrep results to Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
