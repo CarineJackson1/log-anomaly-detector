@@ -10,5 +10,4 @@ reviewers:
   - CarineJackson1
   - sajanamhr21
 ---
-# Security related code owned by lead and specialist
-/security/ @CarineJackson1 @sajanamhr21
+
