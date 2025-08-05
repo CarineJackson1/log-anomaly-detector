@@ -1,37 +1,18 @@
-name: Assign Dependabot Reviewers and Assignees
+name: 🤖 Auto Assign Reviewers on PR
 
 on:
   pull_request:
-    types: [opened, reopened, labeled, synchronize]
+    types: [opened, reopened, synchronize]
 
 jobs:
-  assign:
-    if: github.actor == 'dependabot[bot]'
+  assign-reviewers:
     runs-on: ubuntu-latest
 
     steps:
-- name: 📦 Check for dependencies label
-  id: label-check
-  run: |
-    labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | tr '\n' ' ')
-    if echo "$labels" | grep -qw "dependencies"; then
-      echo "has_dependencies=true" >> "$GITHUB_OUTPUT"
-    else
-      echo "has_dependencies=false" >> "$GITHUB_OUTPUT"
-    fi
-        id: label-check
-        run: |
-          labels=$(jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | tr '\n' ' ')
-          if echo "$labels" | grep -qw "dependencies"; then
-            echo "has_dependencies=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_dependencies=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: 👥 Assign reviewers and assignees
-        if: steps.label-check.outputs.has_dependencies == 'true'
+      - name: 🧾 Auto assign reviewers
         uses: tzkhan/auto-assign-reviewer@v1.0.0
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          reviewers: CarineJackson1,sajanamhr21
-          assignees: CarineJackson1,sajanamhr21
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          reviewers: "CarineJackson1,sajanamhr21"
+          team-reviewers: ""
+          skip-draft: true
