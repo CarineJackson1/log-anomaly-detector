@@ -1,0 +1,17 @@
+name: ESLint Security Scan
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm install
+      - name: Install ESLint security plugin
+        run: npm install eslint-plugin-security --save-dev
+      - name: Run ESLint with security rules
+        run: npx eslint . --ext .js,.jsx,.ts,.tsx --plugin security --rule 'security/detect-object-injection: 2'

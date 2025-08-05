@@ -1,0 +1,5 @@
+# Auto-assign security reviewers for important files
+/package.json @CarineJackson1 @sajanamhr21
+/requirements.txt @CarineJackson1 @sajanamhr21
+.github/workflows/ @CarineJackson1 @sajanamhr21
+SECURITY.md @CarineJackson1 @sajanamhr21
