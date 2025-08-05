@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - master
+      - develop
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -32,10 +32,7 @@ jobs:
             -Dsonar.projectKey=astroskill-lms-connector
             -Dsonar.organization=AsroSkill
             -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=frontend
             -Dsonar.pullrequest.branch=${{ github.head_ref }}
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.base=${{ github.base_ref }}
-
-      - name: Upload analysis report
-        if: always()
-        run: echo "Analysis complete."
