@@ -1,16 +1,3 @@
-name: OWASP ZAP Scan
-
-on:
-  workflow_dispatch:
-
-jobs:
-  zap_scan:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Run OWASP ZAP baseline scan
         run: |
           docker run \
@@ -19,9 +6,11 @@ jobs:
             zap-baseline.py \
             -t https://secdevops-demo-frontend.onrender.com \
             -r zap_report.html
+          # Move report to accessible location
+          cp zap_report.html zap-output.html
 
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v3
         with:
           name: zap-report
-          path: zap_report.html
+          path: zap-output.html
