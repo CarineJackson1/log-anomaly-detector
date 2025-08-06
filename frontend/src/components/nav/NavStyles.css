@@ -1,0 +1,57 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 2px solid;
+    z-index: 5000;
+    background-color: rgb(22, 22, 54);
+    color: white;
+}
+
+.navbar-brand {
+    font-size: 2rem;
+    color: white !important;
+    margin-left: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.navbar-brand:hover {
+    color: gold!important;
+}
+
+.NavLink-Container {
+    display: flex;
+    align-items: center;
+    margin-right: 2rem;
+    gap: 2rem;
+    justify-content: center;
+}
+
+.NavLinks {
+    color: white;
+    text-decoration: none;
+    font-size: 1.2rem;
+    /* transition: color 0.2s; */
+}
+
+.NavLinks:hover {
+    color: gold;
+}
+
+/* .nav-link {
+    color: white;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: color 0.2s;
+}
+
+.nav-link:hover {
+    color: gold;
+} */

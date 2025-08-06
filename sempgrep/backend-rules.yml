@@ -1,0 +1,18 @@
+rules:
+  - id: use-of-eval
+    message: "Avoid use of eval() due to security risk"
+    severity: ERROR
+    languages: [python]
+    pattern: eval(...)
+
+  - id: use-of-subprocess-with-shell-true
+    message: "Avoid subprocess with shell=True — risk of command injection"
+    severity: ERROR
+    languages: [python]
+    pattern: subprocess.Popen(..., shell=True)
+
+  - id: hardcoded-secret
+    message: "Potential hardcoded secret detected"
+    severity: WARNING
+    languages: [python]
+    pattern: $SECRET = "..."
