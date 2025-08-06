@@ -1,9 +1,11 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from config import DevelopmentConfig
 from routes.healthcheck_routes import healthcheck_bp
 from database import db, init_db
 from routes.auth_routes import auth_bp
+from utils.error_handlers import register_error_handlers
 
 # Create Flask application instance
 def create_app():
@@ -11,7 +13,15 @@ def create_app():
     
     CORS(app, resources={r"/auth/*": {"origins": "*"}})
     
+    # Configure the application with development settings
     app.config.from_object(DevelopmentConfig)
+    
+    # JWT configuration
+    # This secret key should be kept secure and not hardcoded in production.
+    app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # This will be replaced with a secure env variable
+    # Initialize JWT Manager
+    # This manager will handle JWT creation and verification.
+    jwt = JWTManager(app)
     
     # Initialize the database
     init_db(app)
@@ -20,14 +30,9 @@ def create_app():
     app.register_blueprint(healthcheck_bp)
     app.register_blueprint(auth_bp)
     
-    # Error handlers
-    @app.errorhandler(404)
-    def not_found(error):
-        return jsonify({"status": "error", "message": "Route not found"}), 404
-    
-    @app.errorhandler(500)
-    def internal_error(error):
-        return jsonify({"status": "error", "message": "Internal server error"}), 500
+    # Register error handlers
+    # This function will register custom error handlers for the application.
+    register_error_handlers(app)
 
     @app.route("/")
     def home():
@@ -40,8 +45,6 @@ def create_app():
 
     return app
     
-
-
 # Run the application
 if __name__ == "__main__":
     app = create_app()

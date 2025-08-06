@@ -1,28 +1,41 @@
-name: 🛡 Semgrep Security Scan
+rules:
+  - id: no-console-log
+    message: "Avoid using console.log in production code."
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: console.log(...)
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-  workflow_dispatch:
+  - id: no-eval
+    message: "Avoid using eval() due to security risks."
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: eval(...)
 
-jobs:
-  semgrep:
-    name: Run Semgrep
-    runs-on: ubuntu-latest
+  - id: react-dangerously-set-inner-html
+    message: "Avoid dangerouslySetInnerHTML — it's an XSS risk."
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: dangerouslySetInnerHTML={{...}}
 
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v3
+  - id: no-hardcoded-secrets
+    message: "Potential hardcoded secret detected."
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: const $VAR = "$SECRET"
+      - pattern: let $VAR = "$SECRET"
+    metadata:
+      category: security
+      technology: javascript
 
-      - name: 🛠 Set up Python (for Semgrep)
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+  - id: fetch-no-https
+    message: "Avoid unencrypted API calls — use HTTPS."
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: fetch("http://...")
 
-      - name: 🧪 Install Semgrep
-        run: pip install semgrep
-
-      - name: 🧹 Run Semgrep with custom config
-        run: semgrep --config .semgrep.yml --error
+  - id: insecure-random
+    message: "Use a cryptographically secure RNG, not Math.random for secrets or tokens."
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: Math.random()

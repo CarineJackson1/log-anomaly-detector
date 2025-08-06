@@ -26,7 +26,7 @@ class CourseProgress(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = relationship("User", backref=db.backref("course_progress", cascade="all, delete"))
+    user = relationship("User", back_populates="course_progress")
     
     # This method provides a string representation of the CourseProgress instance
     def __repr__(self):

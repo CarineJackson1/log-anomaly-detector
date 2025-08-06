@@ -4,6 +4,6 @@ import type { BaseUser } from '../types/types';
 
 export const useRegister = () => {
   return useMutation({
-    mutationFn: (userData: BaseUser) => registerUser(userData),
+    mutationFn: (data: BaseUser) => registerUser(data),
   });
 };

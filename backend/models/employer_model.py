@@ -14,7 +14,7 @@ class Employer(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Establishing a relationship with the User model
-    user = relationship("User", back_populates="employers")
+    user = relationship("User", back_populates="employer")
     
     # This method provides a string representation of the Employer instance
     def __repr__(self):

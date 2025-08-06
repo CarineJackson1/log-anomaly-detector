@@ -1,11 +1,14 @@
 name: OWASP ZAP Scan
+
 on:
   workflow_dispatch:
+
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
     steps:
-      - name: ZAP Scan
-        uses: zaproxy/action-full-scan@v0.4.0
-        with:
-          target: "http://localhost:3000"
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run OWASP ZAP baseline scan
+        run: docker run -v $(pwd):/zap/wrk:rw -t owasp/zap2docker-weekly zap-baseline.py -t https://your-app-url.com

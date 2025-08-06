@@ -4,17 +4,15 @@ import { useRegister } from "./useRegister";
 
 const EmployerForm: React.FC = () => {
   const [formData, setFormData] = useState<
-    Employer & { confirmPassword: string }
-  >({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: "",
-    companyName: "",
-    jobTitle: "",
-    userType: "employer",
-  });
+  Employer & { confirmPassword: string }
+>({
+  email: "",
+  password: "",
+  confirmPassword: "",
+  name: "",            
+  company_name: "", 
+  role: "employer",
+});
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -43,11 +41,9 @@ const EmployerForm: React.FC = () => {
       newErrors.confirmPassword = "Passwords do not match.";
     }
 
-    if (!formData.firstName) newErrors.firstName = "First name is required.";
-    if (!formData.lastName) newErrors.lastName = "Last name is required.";
-    if (!formData.companyName)
+    if (!formData.name) newErrors.firstName = "Name is required.";
+    if (!formData.company_name)
       newErrors.companyName = "Company name is required.";
-    if (!formData.jobTitle) newErrors.jobTitle = "Job title is required.";
 
     return newErrors;
   };
@@ -74,31 +70,17 @@ const EmployerForm: React.FC = () => {
           </h4>
           <form onSubmit={handleSubmit} noValidate>
             <div className="mb-3">
-              <label>First Name</label>
+              <label>Name</label>
               <input
                 type="text"
                 name="firstName"
                 className={`form-control ${
-                  errors.firstName ? "is-invalid" : ""
+                  errors.name ? "is-invalid" : ""
                 }`}
-                value={formData.firstName}
+                value={formData.name}
                 onChange={handleChange}
               />
-              <div className="invalid-feedback">{errors.firstName}</div>
-            </div>
-
-            <div className="mb-3">
-              <label>Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                className={`form-control ${
-                  errors.lastName ? "is-invalid" : ""
-                }`}
-                value={formData.lastName}
-                onChange={handleChange}
-              />
-              <div className="invalid-feedback">{errors.lastName}</div>
+              <div className="invalid-feedback">{errors.name}</div>
             </div>
 
             <div className="mb-3">
@@ -121,25 +103,12 @@ const EmployerForm: React.FC = () => {
                 className={`form-control ${
                   errors.companyName ? "is-invalid" : ""
                 }`}
-                value={formData.companyName}
+                value={formData.company_name}
                 onChange={handleChange}
               />
               <div className="invalid-feedback">{errors.companyName}</div>
             </div>
 
-            <div className="mb-3">
-              <label>Job Title</label>
-              <input
-                type="text"
-                name="jobTitle"
-                className={`form-control ${
-                  errors.jobTitle ? "is-invalid" : ""
-                }`}
-                value={formData.jobTitle}
-                onChange={handleChange}
-              />
-              <div className="invalid-feedback">{errors.jobTitle}</div>
-            </div>
 
             <div className="mb-3">
               <label>Password</label>

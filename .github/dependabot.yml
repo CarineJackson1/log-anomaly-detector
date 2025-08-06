@@ -6,55 +6,85 @@ updates:
       interval: "daily"
     labels:
       - "auto-merge"
+      - "dependencies"
+    reviewers:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    assignees:
+      - "CarineJackson1"
+      - "sajanamhr21"
+    security-updates-only: true
+    commit-message:
+      prefix: "deps"
+      include-scope: true
+    open-pull-requests-limit: 5
+    auto-merge: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "auto-merge"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
     assignees:
       - "CarineJackson1"
       - "sajanamhr21"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "auto-merge"
     commit-message:
       prefix: "deps"
+      include-scope: true
     versioning-strategy: increase
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "auto-merge"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
     assignees:
       - "CarineJackson1"
       - "sajanamhr21"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "auto-merge"
     commit-message:
       prefix: "deps"
+      include-scope: true
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "auto-merge"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
     assignees:
       - "CarineJackson1"
       - "sajanamhr21"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "auto-merge"
     commit-message:
       prefix: "deps"
+      include-scope: true
+    auto-merge: true
+    security-updates-only: true
+    target-branch: develop
+    rebase-strategy: auto

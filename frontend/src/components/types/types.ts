@@ -1,17 +1,18 @@
 export interface BaseUser {
+  name: string;
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  userType: 'learner' | 'employer';
+  role: 'learner' | 'employer' | 'admin';
 }
 
 export interface Learner extends BaseUser {
-  phoneNumber?: string;
-  
+  resume?: string;
+  certifications?: string[]; 
+  skills?: string[];
+  learner_id?: number;
 }
 
 export interface Employer extends BaseUser {
-  companyName: string;
-  jobTitle: string;
+  company_name: string;
+  contact_info?: string;
 }
