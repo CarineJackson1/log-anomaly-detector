@@ -24,7 +24,7 @@ jobs:
         run: pip install semgrep
 
       - name: Run Semgrep frontend rules
-        run: semgrep --config .github/.semgrep/frontend-rules.yml frontend --error
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --error
 
   semgrep-backend:
     name: Semgrep Backend Scan
@@ -42,4 +42,4 @@ jobs:
         run: pip install semgrep
 
       - name: Run Semgrep backend rules
-        run: semgrep --config .github/.semgrep/backend-rules.yml backend --error
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --error
