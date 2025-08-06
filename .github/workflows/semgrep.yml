@@ -1,35 +1,31 @@
-name: Semgrep - Frontend and Backend Scan
+name: Semgrep Security Scan
 
 on:
   push:
-    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
   pull_request:
-    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
   workflow_dispatch:
 
 jobs:
-  semgrep-frontend:
-    name: Frontend Scan
+  semgrep-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Run Semgrep on frontend with custom rules
+      - name: Run Semgrep on Frontend
         uses: returntocorp/semgrep-action@v1
         with:
-          config: ./.semgrep/frontend-rules.yml
-          paths: |
-            frontend
+          config: .semgrep/frontend-rules.yml
+          paths: frontend/
 
-  semgrep-backend:
-    name: Backend Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Run Semgrep on backend with custom rules
+      - name: Run Semgrep on Backend
         uses: returntocorp/semgrep-action@v1
         with:
-          config: ./.semgrep/backend-rules.yml
-          paths: |
-            backend
+          config: .semgrep/backend-rules.yml
+          paths: backend/
