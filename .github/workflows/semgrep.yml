@@ -1,31 +1,45 @@
-name: Semgrep Security Scan
+name: 🛡️ Semgrep Security Scan
 
 on:
   push:
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
+    branches:
+      - main
+      - develop
   pull_request:
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
-  workflow_dispatch:
 
 jobs:
-  semgrep-scan:
+  semgrep-frontend:
+    name: Semgrep Frontend Scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run Semgrep on Frontend
-        uses: returntocorp/semgrep-action@v1
+      - name: Setup Python for Semgrep
+        uses: actions/setup-python@v4
         with:
-          config: .semgrep/frontend-rules.yml
-          paths: frontend/
+          python-version: '3.x'
 
-      - name: Run Semgrep on Backend
-        uses: returntocorp/semgrep-action@v1
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep frontend rules
+        run: semgrep --config .github/.semgrep/frontend-rules.yml frontend --error
+
+  semgrep-backend:
+    name: Semgrep Backend Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python for Semgrep
+        uses: actions/setup-python@v4
         with:
-          config: .semgrep/backend-rules.yml
-          paths: backend/
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep backend rules
+        run: semgrep --config .github/.semgrep/backend-rules.yml backend --error
