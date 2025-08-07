@@ -50,24 +50,22 @@ def extract_zap_critical_issues(html_content):
 def summarize_semgrep(data):
     if not data or "results" not in data:
         return ["No issues found."]
-    lines = [
+    return [
         f"- `{issue.get('path','unknown')}:{issue.get('start',{}).get('line','?')}` — "
         f"{issue.get('extra', {}).get('message', 'No message')} "
         f"(Severity: {issue.get('extra', {}).get('severity', 'N/A')})"
         for issue in data["results"]
     ]
-    return lines
 
 def summarize_bandit(data):
     if not data or "results" not in data:
         return ["No issues found."]
-    lines = [
+    return [
         f"- `{i.get('filename','unknown')}:{i.get('line_number','?')}` — "
         f"{i.get('issue_text','No description')} "
         f"(Severity: {i.get('issue_severity','N/A')}, Confidence: {i.get('issue_confidence','N/A')})"
         for i in data["results"]
     ]
-    return lines
 
 def summarize_gitleaks(data):
     if not data or "findings" not in data:
@@ -94,7 +92,7 @@ def summarize_trivy(data):
     return lines or ["No issues found."]
 
 def summarize_zap(path):
-    if not os.path.isfile(path):
+    if not path or not os.path.isfile(path):
         return ["No issues found."]
     html_content = load_html(path)
     issues = extract_zap_critical_issues(html_content)
@@ -114,7 +112,7 @@ def contains_critical(data, tool):
     elif tool == "trivy":
         return any(v.get("Severity", "").upper() in ["CRITICAL", "HIGH"] for r in data.get("Results", []) for v in r.get("Vulnerabilities", []))
     elif tool == "zap":
-        return os.path.isfile(data) and len(extract_zap_critical_issues(load_html(data))) > 0
+        return path and os.path.isfile(path) and len(extract_zap_critical_issues(load_html(path))) > 0
     return False
 
 def generate_pdf(md_text, pdf_path):
@@ -141,6 +139,7 @@ def main():
     parser.add_argument("--output", required=True, help="Output markdown report path")
     args = parser.parse_args()
 
+    # Merge frontend semgrep results
     semgrep_front_react = load_json(args.semgrep_frontend_react) if args.semgrep_frontend_react else {"results": []}
     semgrep_front_ts = load_json(args.semgrep_frontend_ts) if args.semgrep_frontend_ts else {"results": []}
     combined_frontend = {"results": semgrep_front_react.get("results", []) + semgrep_front_ts.get("results", [])}
