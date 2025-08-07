@@ -1,0 +1,47 @@
+name: Semgrep Scan and Report
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+
+jobs:
+  semgrep-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep Backend Scan
+        run: |
+          semgrep --config=p/your-backend-policy --json --output=security-reports/semgrep/backend/raw.json ./backend
+
+      - name: Run Semgrep Frontend Scan
+        run: |
+          semgrep --config=p/your-frontend-policy --json --output=security-reports/semgrep/frontend/raw.json ./frontend
+
+      - name: Install dependencies for report generation
+        run: pip install --upgrade pip
+
+      - name: Generate Backend Report
+        run: python scripts/generate_semgrep_report.py security-reports/semgrep/backend/raw.json
+
+      - name: Generate Frontend Report
+        run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/raw.json
+
+      - name: Upload Semgrep Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-reports
+          path: |
+            security-reports/semgrep/backend/report.md
+            security-reports/semgrep/frontend/report.md
