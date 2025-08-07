@@ -11,11 +11,14 @@ jobs:
   semgrep-frontend:
     name: Semgrep Frontend Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # required for artifact uploads
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Python for Semgrep
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -23,19 +26,38 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Run Semgrep frontend rules
+      - name: Create report directory
+        run: mkdir -p security-reports/raw
+
+      - name: Run Semgrep (Frontend)
         run: |
-          mkdir -p security-reports/raw
-          semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
+          semgrep --config .github/semgrep/frontend-rules.yml frontend \
+            --json > security-reports/raw/semgrep-frontend.json || true
+
+      - name: Convert JSON to Markdown
+        run: |
+          echo "## Semgrep Frontend Report" > security-reports/semgrep-frontend.md
+          jq -r '.results[] | "- **\(.check_id)** (\(.severity)) at \(.path):\(.start.line): \(.extra.message)"' security-reports/raw/semgrep-frontend.json >> security-reports/semgrep-frontend.md || echo "No findings."
+
+      - name: Upload Artifacts (Frontend Reports)
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-frontend-reports
+          path: |
+            security-reports/raw/semgrep-frontend.json
+            security-reports/semgrep-frontend.md
 
   semgrep-backend:
     name: Semgrep Backend Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Python for Semgrep
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -43,7 +65,23 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Run Semgrep backend rules
+      - name: Create report directory
+        run: mkdir -p security-reports/raw
+
+      - name: Run Semgrep (Backend)
         run: |
-          mkdir -p security-reports/raw
-          semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
+          semgrep --config .github/semgrep/backend-rules.yml backend \
+            --json > security-reports/raw/semgrep-backend.json || true
+
+      - name: Convert JSON to Markdown
+        run: |
+          echo "## Semgrep Backend Report" > security-reports/semgrep-backend.md
+          jq -r '.results[] | "- **\(.check_id)** (\(.severity)) at \(.path):\(.start.line): \(.extra.message)"' security-reports/raw/semgrep-backend.json >> security-reports/semgrep-backend.md || echo "No findings."
+
+      - name: Upload Artifacts (Backend Reports)
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-backend-reports
+          path: |
+            security-reports/raw/semgrep-backend.json
+            security-reports/semgrep-backend.md
