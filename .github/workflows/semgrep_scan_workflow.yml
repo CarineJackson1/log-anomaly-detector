@@ -1,0 +1,49 @@
+name: Semgrep Scan and Report
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+
+jobs:
+  semgrep-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: 🕵️ Install Semgrep
+        run: pip install semgrep
+
+      - name: 🔍 Debug files being scanned
+        run: |
+          echo "Listing Python files in backend:"
+          find backend -name '*.py' || echo "❌ No Python files found in backend"
+
+      - name: 📦 Run Semgrep backend scan
+        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
+
+      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
+        run: |
+          semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
+          semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
+
+      - name: 🧠 Generate combined Semgrep report
+        run: python .github/scripts/generate_full_report.py \
+          security-reports/semgrep/frontend/react.json \
+          security-reports/semgrep/frontend/ts.json \
+          security-reports/semgrep/backend/raw.json \
+          security-reports/semgrep/combined_report.md
+
+      - name: ☁️ Upload reports as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-reports
+          path: |
+            security-reports/semgrep/combined_report.md
