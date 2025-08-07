@@ -3,7 +3,7 @@ rules:
     message: "Avoid using dangerouslySetInnerHTML to prevent XSS vulnerabilities"
     severity: ERROR
     languages: [javascript, typescript, tsx]
-    pattern: dangerouslySetInnerHTML={{...}}
+    pattern: $X.dangerouslySetInnerHTML = $Y
 
   - id: no-eval-js
     message: "Avoid use of eval() due to security risk"
@@ -12,10 +12,11 @@ rules:
     pattern: eval(...)
 
   - id: no-inline-js
-    message: "Avoid inline JavaScript in JSX"
+    message: "Avoid inline JavaScript event handlers in JSX"
     severity: WARNING
     languages: [jsx, tsx]
-    pattern: "<div onClick={...}>"
+    pattern: |
+      <div onClick={$EVENT}>
 
   - id: hardcoded-secret-js
     message: "Potential hardcoded secret detected"
