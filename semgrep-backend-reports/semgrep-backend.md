@@ -1,0 +1,17 @@
+## Semgrep Backend Report
+- **github.semgrep.hardcoded-secret** (null) at backend/app.py:21: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/migraitons/versions/26e1b6c3c49b_create_users_table.py:15: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/migraitons/versions/6f41a01df0aa_add_role_to_user_model.py:15: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/migraitons/versions/6f41a01df0aa_add_role_to_user_model.py:16: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/migraitons/versions/af04c1fc9f8e_add_employer_learner_profile_course_.py:15: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/migraitons/versions/af04c1fc9f8e_add_employer_learner_profile_course_.py:16: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/course_progress_model.py:10: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/course_progress_model.py:11: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/course_progress_model.py:12: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/course_progress_model.py:16: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/employer_model.py:7: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/learner_profile_model.py:7: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/user_model.py:9: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/user_model.py:10: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/user_model.py:11: Potential hardcoded secret detected
+- **github.semgrep.hardcoded-secret** (null) at backend/models/user_model.py:16: Potential hardcoded secret detected
