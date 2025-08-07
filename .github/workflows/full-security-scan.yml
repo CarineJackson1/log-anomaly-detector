@@ -1,72 +1,92 @@
-name: Full Security Scan
+name: Full Security Scan Pipeline
 
 on:
   pull_request:
-    branches: [ develop, main ]
+    branches: [main, develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
 
 jobs:
   security-scans:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install dependencies for scanning and reporting
+      - name: Install security tools
         run: |
-          pip install semgrep beautifulsoup4 reportlab bandit
+          pip install semgrep bandit beautifulsoup4 reportlab
 
-      - name: Run Semgrep Frontend Scan
-        run: semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
-
-      - name: Run Semgrep Backend Scan
-        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
-
-      - name: Run Bandit Scan
+      - name: Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
-      # Add other scans here: Gitleaks, Retire.js, Trivy, OWASP ZAP, etc.
-      # Ensure outputs saved to security-reports/raw/ or respective folders
+      - name: Run Semgrep frontend scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
 
-      - name: Generate combined security report (MD + PDF)
-        run: |
-          python .github/scripts/generate_full_report.py \
-            --semgrep-frontend security-reports/semgrep/frontend/react.json \
-            --semgrep-backend security-reports/semgrep/backend/raw.json \
-            --bandit security-reports/raw/bandit-report.json \
-            --gitleaks security-reports/raw/gitleaks-report.json \
-            --retire security-reports/raw/retire-frontend.json \
-            --trivy security-reports/raw/trivy-report.json \
-            --zap security-reports/raw/zap-report.html \
-            --output security-reports/summary_report.md
+      - name: Run Semgrep backend scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
 
-      - name: Upload reports
+      - name: Run Retire.js scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: Run Gitleaks scan
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          format: json
+          output: security-reports/raw/trivy-report.json
+          scan-type: fs
+          scan-path: .
+
+      - name: Upload raw scan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: security-reports
+          name: raw-scan-results
+          path: security-reports/raw/
+
+      - name: Generate combined summary report
+        run: python .github/scripts/generate_full_report.py \
+          --bandit security-reports/raw/bandit-report.json \
+          --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+          --semgrep-backend security-reports/raw/semgrep-backend.json \
+          --gitleaks security-reports/raw/gitleaks-report.json \
+          --retire security-reports/raw/retire-frontend.json \
+          --trivy security-reports/raw/trivy-report.json \
+          --zap security-reports/raw/zap-report.html \
+          --output security-reports/summary_report.md
+
+      - name: Upload combined report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: summary-report
           path: |
             security-reports/summary_report.md
             security-reports/summary_report.pdf
-            security-reports/raw/
 
-      - name: Post security report as PR comment
+      - name: Comment report on PR
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const md = fs.readFileSync('security-reports/summary_report.md', 'utf8');
-            if (context.payload.pull_request) {
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            if (context.issue.number) {
               await github.rest.issues.createComment({
+                issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body: `## 🔐 Security Scan Summary\n\n${md}`
+                body: `## 🔐 Security Scan Summary\n\n${summary}`
               });
             } else {
-              console.log("No PR context, skipping comment.");
+              console.log("No PR number found, skipping comment.");
             }
