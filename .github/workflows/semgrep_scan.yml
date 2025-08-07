@@ -19,12 +19,12 @@ jobs:
           python-version: '3.x'
 
       - name: 📁 Ensure report directory exists
-        run: mkdir -p security-reports/semgrep backend ./frontend/src
+        run: mkdir -p security-reports/semgrep
 
       - name: 🕵️ Install Python dependencies
         run: pip install semgrep beautifulsoup4
 
-      - name: 🔍 Debug files being scanned
+      - name: 🔍 Debug Python files in backend
         run: |
           echo "Listing Python files in backend:"
           find backend -name '*.py' || echo "❌ No Python files found in backend"
@@ -39,12 +39,11 @@ jobs:
         run: semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
 
       - name: 🧠 Generate combined Semgrep report
-        run: |
-          python .github/scripts/generate_full_report.py \
-            --semgrep-frontend-react security-reports/semgrep/frontend/react.json \
-            --semgrep-frontend-ts security-reports/semgrep/frontend/ts.json \
-            --semgrep-backend security-reports/semgrep/backend/raw.json \
-            --output security-reports/semgrep/combined_report.md
+        run: python .github/scripts/generate_full_report.py \
+          --semgrep-frontend-react security-reports/semgrep/frontend/react.json \
+          --semgrep-frontend-ts security-reports/semgrep/frontend/ts.json \
+          --semgrep-backend security-reports/semgrep/backend/raw.json \
+          --output security-reports/semgrep/combined_report.md
 
       - name: ☁️ Upload combined report artifact
         uses: actions/upload-artifact@v4
