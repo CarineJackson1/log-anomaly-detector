@@ -43,24 +43,24 @@ def write_markdown_report(results, output_path, title="Semgrep Report"):
     with open(output_path, 'w', encoding='utf-8') as md_file:
         md_file.write('\n'.join(lines))
 
-    # Exit with failure if ERROR issues found
     if count_errors > 0:
         print(f"❌ Found {count_errors} ERROR-level issues, failing CI.")
         sys.exit(1)
     else:
         print("✅ No ERROR-level issues found.")
 
-def generate_report(raw_json_path):
-    folder = Path(raw_json_path).parent
-    markdown_path = folder / "report.md"
-    data = load_semgrep_json(raw_json_path)
-    results = data.get("results", [])
-    title = f"Semgrep Report – {folder.name.capitalize()}"
-    write_markdown_report(results, markdown_path, title)
-    print(f"✅ Generated: {markdown_path}")
+def generate_report(raw_json_paths, output_md_path):
+    combined_results = []
+    for path in raw_json_paths:
+        data = load_semgrep_json(path)
+        combined_results.extend(data.get("results", []))
+
+    write_markdown_report(combined_results, output_md_path, "Combined Semgrep Frontend Report")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python generate_semgrep_report.py <raw_json_path>")
+    if len(sys.argv) < 3:
+        print("Usage: python generate_semgrep_report.py <output_md_path> <raw_json_path_1> [<raw_json_path_2> ...]")
         sys.exit(2)
-    generate_report(sys.argv[1])
+    output_path = sys.argv[1]
+    raw_paths = sys.argv[2:]
+    generate_report(raw_paths, output_path)
