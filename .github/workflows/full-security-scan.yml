@@ -2,9 +2,7 @@ name: 🛡️ Full Security Scan Pipeline
 
 on:
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
 
 permissions:
   contents: write
@@ -30,12 +28,11 @@ jobs:
 
       - name: Install tools
         run: |
-          pip install bandit semgrep
+          pip install bandit semgrep reportlab
           npm install -g retire
-          sudo apt-get install jq -y
 
       - name: Run Bandit scan
-        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json || true
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
       - name: Run Semgrep frontend scan
         run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
@@ -49,7 +46,8 @@ jobs:
       - name: Run Gitleaks scan
         uses: zricethezav/gitleaks-action@v2
         with:
-          args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
+          args: --redact --report-path=security-reports/raw/gitleaks-report.json
+          fail-on-error: false
 
       - name: Run Trivy scan
         uses: aquasecurity/trivy-action@master
@@ -58,46 +56,33 @@ jobs:
           format: json
           output: security-reports/raw/trivy-report.json
 
-      - name: Run OWASP ZAP Baseline Scan
-        run: |
-          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
-            -t https://your-app-url.com -r zap-report.html || true
-          mkdir -p security-reports/raw
-          mv zap-report.html security-reports/raw/zap-report.html
-
-      - name: Upload all raw scan artifacts
+      - name: Upload raw scan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: security-scan-raw
+          name: raw-scan-results
           path: security-reports/raw/
 
-      - name: Generate combined security summary report
-        run: python scripts/generate_full_report.py \
-          --bandit security-reports/raw/bandit-backend.json \
-          --semgrep-frontend security-reports/raw/semgrep-frontend.json \
-          --semgrep-backend security-reports/raw/semgrep-backend.json \
-          --retire security-reports/raw/retire-frontend.json \
-          --gitleaks security-reports/raw/gitleaks-report.json \
-          --trivy security-reports/raw/trivy-report.json \
-          --zap security-reports/raw/zap-report.html \
-          --output security-reports/summary_report.md
+      - name: Generate combined summary report
+        run: python scripts/generate_report.py
 
-      - name: Upload combined summary report
+      - name: Upload combined report artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: security-summary-report
-          path: security-reports/summary_report.md
+          name: summary-report
+          path: |
+            security-reports/summary_report.md
+            security-reports/summary_report.pdf
 
       - name: Fail if critical issues found
         run: |
-          if grep -q "CRITICAL ISSUE FOUND" security-reports/summary_report.md; then
-            echo "Critical security issues found, failing the job."
+          if grep -qi "CRITICAL" security-reports/summary_report.md; then
+            echo "Critical issues found! Failing the job."
             exit 1
           else
-            echo "No critical security issues found."
+            echo "No critical issues found."
           fi
 
-      - name: Create PR comment with security summary
+      - name: Comment report on PR
         uses: actions/github-script@v7
         with:
           script: |

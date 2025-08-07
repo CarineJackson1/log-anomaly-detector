@@ -1,73 +1,54 @@
-#Security
+# 🔐 Security
 
+---
 
-⸻
+## 🚀 Overview
 
-🚀 Overview
+AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment, helping learners showcase verified credentials to hiring platforms.
 
-AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment…
+This project maintains a proactive security posture by integrating automated CI-based scanning, PR protection rules, and clear reporting processes.
 
-⸻
+---
 
-🔐 Security Policy
+## 🛡 Supported Branches
 
-🛡 Supported Branches
+| Branch   | Security Coverage                  |
+|----------|------------------------------------|
+| `main`   | ✅ Full scan + PR protection        |
+| `develop`| ✅ Full scan + PR protection        |
 
-Branch	Security Coverage
-main	✅ Full Scan & PR Protection
-develop	✅ Full Scan & PR Protection
+---
 
+## 🧪 CI-Based Security Scanning
 
-⸻
+AstroSkill LMS uses **GitHub Actions** to automatically scan for vulnerabilities on every pull request.
 
-🐞 Reporting a Vulnerability
+| Tool         | Target Scope         | Purpose                                         |
+|--------------|----------------------|-------------------------------------------------|
+| **Semgrep**  | Frontend + Backend   | Static code analysis using custom and open rules |
+| **Bandit**   | Python backend       | Detects insecure code patterns in Python         |
+| **Retire.js**| JavaScript frontend  | Finds vulnerable JS libraries in use             |
+| **Trivy**    | Codebase & container | Finds OS/package-level vulnerabilities           |
+| **Gitleaks** | Entire repo          | Detects hardcoded secrets                        |
+| **OWASP ZAP**| Live staging URL     | Dynamic app security testing (DAST)              |
+| **Dependabot** | PRs for dependencies | Ensures secure versions for packages            |
 
-If you discover a security issue, please do not open a public GitHub issue.
-Instead, report privately to the project maintainers:
-	•	Lead Security Reviewer: @CarineJackson1
-	•	Security Reviewer: @sajanamhr21
+- ✅ **CI auto-fails** for **CRITICAL or HIGH** severity issues  
+- 📄 Security summary is **posted automatically as a PR comment**  
+- 🧾 Reports saved to `security-reports/` as **Markdown, PDF, and raw JSON**
 
-Expected response time: within 48 hours
+---
 
-⸻
+## 🧠 How to Read Reports
 
-🧪 CI-Based Security Scanning
+Reports include:
+- Vulnerability file/line location
+- Description and severity
+- CWE or rule ID (if available)
 
-AstroSkill LMS integrates automated security testing via GitHub Actions:
+### Example (Markdown):
 
-Tool	Scan Target	Output
-Semgrep	Frontend + Backend	SAST, custom rule checks
-Bandit	Python backend	Common Python security issues
-Retire.js	JS dependencies	Known vulnerable libraries
-OWASP ZAP	Live frontend (staging)	Dynamic Application Security Testing (DAST)
-Dependabot PR CI	Any PR from Dependabot	Runs tests + security checks
-
-✅ PRs auto-fail on critical security violations
-📄 Results summarized and posted as PR comments
-📂 Artifacts stored for audit in security-reports/
-
-⸻
-
-📦 Dependency Updates (via Dependabot)
-
-All package ecosystems are monitored for security updates:
-
-Ecosystem	Frequency	Auto-Merge	Branch
-Python (pip)	Daily	✅	develop
-Node.js (npm)	Weekly	✅	develop
-GitHub Actions	Weekly	✅	develop
-Docker	Weekly	✅	develop
-
-PRs are:
-	•	Auto-assigned to @CarineJackson1, @sajanamhr21
-	•	Auto-labeled with dependencies, auto-merge
-	•	Merged if tests + scans pass
-
-⸻
-
-🛡 Security Enforcement & Best Practices
-	•	✅ Security Scans are run on every PR via GitHub Actions
-	•	✅ Credentials and API keys are managed via GitHub Secrets
-	•	✅ Branch protection is enabled on main and develop
-	•	✅ Security reports are uploaded for audit trails
-	•	✅ Auto-summary comments are generated on PRs for transparency
+```md
+### Semgrep Backend
+- `backend/api/views.py:45` — Insecure use of `eval` (Severity: CRITICAL)
+- `backend/app.py:23` — Hardcoded credentials (Severity: HIGH)

@@ -61,39 +61,4 @@ def summarize_trivy(data):
     return lines or ["No issues found."]
 
 def generate_report():
-    os.makedirs("security-reports", exist_ok=True)
-    report_md = "# 🔒 Security Scan Summary\n\n"
-    styles = getSampleStyleSheet()
-    story = [Paragraph("🔒 Security Scan Summary", styles["Title"]), Spacer(1, 12)]
-
-    for title, path in REPORT_PATHS.items():
-        data = load_json(path)
-        if "Semgrep" in title:
-            lines = summarize_semgrep(data)
-        elif "Bandit" in title:
-            lines = summarize_bandit(data)
-        elif "Gitleaks" in title:
-            lines = summarize_gitleaks(data)
-        elif "Retire" in title:
-            lines = summarize_retire(data)
-        elif "Trivy" in title:
-            lines = summarize_trivy(data)
-        else:
-            lines = ["No summary function defined."]
-
-        section = f"## {title}\n" + "\n".join(lines) + "\n\n"
-        report_md += section
-        story.append(Paragraph(title, styles["Heading2"]))
-        for line in lines:
-            story.append(Paragraph(line, styles["Normal"]))
-        story.append(Spacer(1, 12))
-
-    with open(OUTPUT_MD, "w") as f:
-        f.write(report_md)
-
-    doc = SimpleDocTemplate(OUTPUT_PDF, pagesize=letter)
-    doc.build(story)
-    print(f"✅ Reports generated: {OUTPUT_MD}, {OUTPUT_PDF}")
-
-if __name__ == "__main__":
-    generate_report()
+    os.makedirs("security

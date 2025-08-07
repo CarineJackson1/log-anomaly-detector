@@ -55,22 +55,36 @@ jobs:
           semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
           semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
 
-      - name: 🧠 Generate backend report
-        run: python scripts/generate_semgrep_report.py \
-          security-reports/semgrep/backend/report.md \
-          security-reports/semgrep/backend/raw.json
+      - name: Ensure report directory exists
+        run: mkdir -p security-reports/semgrep
 
-      - name: 🧠 Generate combined frontend report
-        run: python scripts/generate_semgrep_report.py \
-          security-reports/semgrep/frontend/report.md \
-          security-reports/semgrep/frontend/react.json \
-          security-reports/semgrep/frontend/ts.json
+      - name: 🧠 Generate combined Semgrep report
+        run: python .github/scripts/generate_full_report.py \
+          --semgrep-frontend security-reports/semgrep/frontend/react.json \
+          --semgrep-frontend security-reports/semgrep/frontend/ts.json \
+          --semgrep-backend security-reports/semgrep/backend/raw.json \
+          --output security-reports/semgrep/combined_report.md
 
+<<<<<<< HEAD:.github/workflows/semgrep-report.yml
 >>>>>>> 49e83b0e3e85c607539e8a07d81365e21d875f75
       - name: ☁️ Upload reports as artifacts
+=======
+      - name: ☁️ Upload combined report artifact
+>>>>>>> 549e78b1c9c21502fbe2c5b2001515ae06f982ce:.github/workflows/semgrep_scan.yml
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
-          path: |
-            security-reports/semgrep/backend/report.md
-            security-reports/semgrep/frontend/report.md
+          path: security-reports/semgrep/combined_report.md
+
+      - name: 💬 Post PR comment with combined report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-reports/semgrep/combined_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Combined Semgrep Security Report\n\n${report}`
+            });
