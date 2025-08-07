@@ -1,22 +1,24 @@
 name: 🔹 Generate Dynamic Security Badge
 
+# Trigger this workflow *after* the main scan workflow finishes successfully
 on:
-  push:
-    branches: [main, develop]
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Full Security Scan Pipeline"]  # exact name of your main scan workflow
+    types:
+      - completed
 
 jobs:
   generate-badge:
-    name: 🔹 Build Badge from Summary Report
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # needed to commit badge JSON
 
     steps:
-      - name: 📆 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: ⚡️ Read and parse security summary
+      - name: Read and parse security summary report
         id: parse
         run: |
           SUMMARY_FILE="security-reports/summary_report.md"
@@ -29,10 +31,10 @@ jobs:
             exit 0
           fi
 
-          HIGH_COUNT=$(grep -ic 'severity: high' "$SUMMARY_FILE")
+          HIGH_COUNT=$(grep -ic 'severity: high' "$SUMMARY_FILE" || echo 0)
           if [[ $HIGH_COUNT -gt 0 ]]; then
             COLOR="red"
-            MESSAGE="$HIGH_COUNT+High+Issues"
+            MESSAGE="${HIGH_COUNT}+High+Issues"
           else
             COLOR="brightgreen"
             MESSAGE="No+High+Issues"
@@ -42,7 +44,7 @@ jobs:
           echo "label=security" >> $GITHUB_OUTPUT
           echo "message=$MESSAGE" >> $GITHUB_OUTPUT
 
-      - name: 🌊 Create Shields.io dynamic badge JSON
+      - name: Create Shields.io badge JSON
         run: |
           mkdir -p .github/badges
           cat <<EOF > .github/badges/security-badge.json
@@ -54,10 +56,10 @@ jobs:
           }
           EOF
 
-      - name: 📁 Commit & Push badge JSON
+      - name: Commit & push badge JSON
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git add .github/badges/security-badge.json
           git commit -m "✨ Update dynamic security badge" || echo "No changes to commit"
           git push
