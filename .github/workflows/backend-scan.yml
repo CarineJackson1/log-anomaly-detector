@@ -1,0 +1,38 @@
+name: 🛡️ Full Security Scan Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  security-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install tools
+        run: |
+          pip install bandit semgrep
+          npm install -g retire
+          sudo apt-get install jq -y
+
+      - name: 📦 Run Semgrep backend scan (Python)
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
