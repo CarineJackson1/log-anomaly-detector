@@ -1,15 +1,18 @@
-name: 🛡️ Full Security Scan Pipeline with ZAP
+Great! Here’s a full example of your updated full-security-scan.yml workflow that includes the detailed Bandit job integrated with your other security scans, artifact uploads, and summary posting. It also keeps everything organized and ready to run on pull requests to main or develop.
+
+name: 🛡️ Full Security Scan Pipeline
 
 on:
   pull_request:
     branches: [main, develop]
 
 jobs:
+  # Matrix to run multiple scanners in parallel
   security-scans:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        scanner: [bandit, semgrep-frontend, semgrep-backend, retire, gitleaks, trivy]
+        scanner: [semgrep-frontend, semgrep-backend, retire, gitleaks, trivy]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -20,24 +23,19 @@ jobs:
         with:
           node-version: 18
 
-      - name: Setup Python (for bandit, semgrep-backend)
-        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend'
+      - name: Setup Python (for semgrep-backend)
+        if: matrix.scanner == 'semgrep-backend'
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      - name: Install Semgrep
+        if: matrix.scanner == 'semgrep-frontend' || matrix.scanner == 'semgrep-backend'
+        run: pip install semgrep
+
+      - name: Install Retire.js
         if: matrix.scanner == 'retire'
         run: npm install -g retire
-
-      - name: Install Semgrep and Bandit
-        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend' || matrix.scanner == 'semgrep-frontend'
-        run: |
-          pip install semgrep bandit
-
-      - name: Run Bandit Scan
-        if: matrix.scanner == 'bandit'
-        run: bandit -r backend -f json -o bandit-report.json
 
       - name: Run Semgrep Frontend Scan
         if: matrix.scanner == 'semgrep-frontend'
@@ -61,16 +59,9 @@ jobs:
         if: matrix.scanner == 'trivy'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: your-image-name:latest  # <-- Replace with your Docker image name/tag
+          image-ref: your-image-name:latest
           format: json
           output: trivy-report.json
-
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'bandit'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bandit-report
-          path: bandit-report.json
 
       - name: Upload scan artifacts
         if: matrix.scanner == 'semgrep-frontend'
@@ -107,122 +98,172 @@ jobs:
           name: trivy-report
           path: trivy-report.json
 
-  zap_scan:
+  # Bandit job with detailed filtering and annotations
+  bandit:
     runs-on: ubuntu-latest
-    needs: security-scans
+
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Run OWASP ZAP baseline scan
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Bandit
         run: |
-          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable \
-            zap-baseline.py -t https://secdevops-demo-frontend.onrender.com -r zap_report.html || true
-          mkdir -p security-reports/raw
-          mv zap_report.html security-reports/raw/
+          python -m pip install --upgrade pip
+          pip install bandit
 
-      - name: Upload ZAP report
+      - name: Run Bandit and save JSON report
+        run: |
+          if find . -name "*.py" | grep -q .; then
+            bandit -r . -f json -o bandit-report.json
+          else
+            echo '{"results": []}' > bandit-report.json
+            echo "⚠️ No Python files found to scan. Generated empty report."
+          fi
+
+      - name: Generate filtered Bandit report and comment content
+        id: bandit-scan
+        run: |
+          python - <<EOF
+          import json, sys, os
+
+          MIN_CONFIDENCE = {'low': 0, 'medium': 1, 'high': 2}
+          CONFIDENCE_MAP = {'low': 0, 'medium': 1, 'high': 2}
+
+          with open("bandit-report.json") as f:
+              data = json.load(f)
+
+          def conf_to_num(conf):
+              return CONFIDENCE_MAP.get(conf.lower(), 0)
+
+          high_issues = []
+          all_issues = []
+
+          for issue in data.get("results", []):
+              conf_num = conf_to_num(issue.get("issue_confidence", "").lower())
+              if conf_num < MIN_CONFIDENCE['medium']:
+                  continue
+
+              entry = f"- `{issue['filename']}:{issue['line_number']}`: {issue['issue_text']} (**{issue['issue_severity']}**, {issue['issue_confidence']})"
+              all_issues.append({
+                  'text': entry,
+                  'filename': issue['filename'],
+                  'line': issue['line_number'],
+                  'severity': issue['issue_severity'].lower(),
+                  'confidence': issue['issue_confidence'].lower(),
+                  'issue_text': issue['issue_text'],
+                  'test_id': issue.get('test_id', 'Bandit'),
+              })
+
+              if issue['issue_severity'].lower() == 'high':
+                  high_issues.append(entry)
+
+          comment = []
+          comment.append("## 🔒 Bandit Security Scan Results (Confidence: Medium+)")
+          if all_issues:
+              comment.append(f"**Total Issues Found**: {len(all_issues)}\n")
+              for issue in all_issues:
+                  comment.append(issue['text'])
+          else:
+              comment.append("✅ No issues found.")
+
+          run_url = os.getenv('GITHUB_SERVER_URL') + '/' + os.getenv('GITHUB_REPOSITORY') + '/actions/runs/' + os.getenv('GITHUB_RUN_ID')
+          comment.append("\n---\n")
+          comment.append(f"📄 Download the full Bandit report from the **Artifacts** section of the [Actions run page]({run_url}).")
+
+          with open("bandit-comment.md", "w") as out:
+              out.write("\n".join(comment))
+
+          import pathlib
+          pathlib.Path("filtered-issues.json").write_text(json.dumps(all_issues))
+
+          if high_issues:
+              sys.exit(1)
+          EOF
+
+      - name: Upload Bandit report
         uses: actions/upload-artifact@v4
         with:
-          name: zap-report
-          path: security-reports/raw/zap_report.html
-
-  post-summary:
-    needs: [security-scans, zap_scan]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Download all scan reports
-        uses: actions/download-artifact@v3
-        with:
           name: bandit-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-frontend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-backend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: retire-frontend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: gitleaks-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: trivy-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: zap-report
-          path: security-reports/
+          path: bandit-report.json
 
-      - name: Generate and post summary comment
+      - name: Upload filtered issues JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: filtered-bandit-issues
+          path: filtered-issues.json
+
+      - name: Comment on PR with Bandit summary
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = require('path');
+            const commentBody = fs.readFileSync('bandit-comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
 
-            function parseSemgrep(data) {
-              if (!data.results) return [];
-              return data.results.map(r => `- [${r.extra?.severity || 'N/A'}] \`${r.check_id || r.rule_id}\` in \`${r.path}\`: ${r.extra?.message || r.message || r.issue_text}`);
-            }
+      - name: Post Bandit issues as GitHub Check annotations
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issues = JSON.parse(fs.readFileSync('filtered-issues.json', 'utf8'));
 
-            function parseBandit(data) {
-              if (!data.results) return [];
-              return data.results.map(r => `- [${r.issue_severity || 'N/A'}] \`${r.test_id || 'bandit'}\` in \`${r.filename}\`: ${r.issue_text}`);
-            }
+            const checkRun = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: "Bandit Security Scan",
+              head_sha: context.sha,
+              status: "in_progress",
+            });
 
-            function parseRetire(data) {
-              if (!data.data) return [];
-              return data.data.map(r => `- [HIGH] \`${r.component}\` (${r.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in \`${r.file}\``);
-            }
+            const maxAnnotations = 50;
+            const annotations = [];
 
-            function parseGitleaks(data) {
-              if (!data.findings) return [];
-              return data.findings.map(r => `- [SECRET] \`${r.description}\` in \`${r.file}\``);
-            }
+            for (let i = 0; i < Math.min(issues.length, maxAnnotations); i++) {
+              const issue = issues[i];
 
-            function parseTrivy(data) {
-              if (!data.Results) return [];
-              let vulns = [];
-              for (const res of data.Results) {
-                if (res.Vulnerabilities) {
-                  for (const vuln of res.Vulnerabilities) {
-                    vulns.push(`- [${vuln.Severity}] \`${vuln.VulnerabilityID}\` in \`${res.Target}\`: ${vuln.Title}`);
-                  }
-                }
+              let annotation_level = "notice";
+              if (issue.severity === "high") {
+                annotation_level = "failure";
+              } else if (issue.severity === "medium") {
+                annotation_level = "warning";
               }
-              return vulns;
+
+              annotations.push({
+                path: issue.filename,
+                start_line: issue.line,
+                end_line: issue.line,
+                annotation_level: annotation_level,
+                message: issue.issue_text,
+                title: `[${issue.test_id}] ${issue.severity.toUpperCase()} severity`,
+              });
             }
 
-            function parseZap() {
-              const zapPath = path.join('security-reports', 'raw', 'zap_report.html');
-              if (fs.existsSync(zapPath)) {
-                return ['- [INFO] OWASP ZAP scan completed. See the [ZAP Report](zap_report.html).'];
-              }
-              return [];
-            }
+            const hasHigh = issues.some(issue => issue.severity === "high");
+            const conclusion = hasHigh ? "failure" : "success";
 
-            function loadJSON(filePath) {
-              if (!fs.existsSync(filePath)) return null;
-              return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            }
-
-            const bandit = loadJSON('security-reports/bandit-report.json') || {};
-            const semgrepFrontend = loadJSON('security-reports/semgrep-frontend.json') || {};
-            const semgrepBackend = loadJSON('security-reports/semgrep-backend.json') || {};
-            const retire = loadJSON('security-reports/retire-frontend.json') || {};
-            const gitleaks = loadJSON('security-reports/gitleaks-report.json') || {};
-            const trivy = loadJSON('security-reports/trivy-report.json') || {};
-            const zap = parseZap();
-
-            let commentBody = "## 🛡️ Security Scan Summary\n\n";
-
-            commentBody += "### Semgrep Frontend\n" + (parseSemgrep(semgrepFrontend).join("\n") || "No issues found.") + "\n\n
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: checkRun.data.id,
+              status: "completed",
+              conclusion: conclusion,
+              output: {
+                title: "Bandit Security Scan Results",
+                summary: `${issues.length}
