@@ -1,14 +1,14 @@
 import json
 import os
 
-# Config: paths to raw scan JSON reports
+# Paths to scan JSON outputs
 REPORT_PATHS = {
-    "Semgrep Frontend": "security-reports/raw/semgrep-frontend.json",
-    "Semgrep Backend": "security-reports/raw/semgrep-backend.json",
-    "Bandit Backend": "security-reports/raw/bandit-backend.json",
-    "Gitleaks": "security-reports/raw/gitleaks-report.json",
-    "Retire.js": "security-reports/raw/retire-frontend.json",
-    "Trivy": "security-reports/raw/trivy-report.json",
+    "Semgrep Frontend": "semgrep-frontend.json",
+    "Semgrep Backend": "semgrep-backend.json",
+    "Bandit Backend": "bandit-report.json",
+    "Gitleaks": "gitleaks-report.json",
+    "Retire.js": "retire-frontend.json",
+    "Trivy": "trivy-report.json",
 }
 
 OUTPUT_PATH = "security-reports/summary_report.md"
