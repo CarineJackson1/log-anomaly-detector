@@ -16,7 +16,7 @@ REPORT_PATHS = {
 }
 
 def load_json(path):
-    if not os.path.isfile(path):
+    if not path or not os.path.isfile(path):
         print(f"⚠️ Warning: File not found: {path}")
         return None
     try:
@@ -27,7 +27,7 @@ def load_json(path):
         return None
 
 def load_html(path):
-    if not os.path.isfile(path):
+    if not path or not os.path.isfile(path):
         print(f"⚠️ Warning: File not found: {path}")
         return ""
     with open(path, 'r', encoding='utf-8') as f:
@@ -38,7 +38,7 @@ def extract_zap_critical_issues(html_content):
     issues = []
     for alertitem in soup.select('alertitem'):
         riskcode = alertitem.find('riskcode')
-        if riskcode and int(riskcode.text) >= 2:  # RiskCode 2=Medium, 3=High
+        if riskcode and int(riskcode.text) >= 2:  # Medium or High risk
             alertname = alertitem.find('alert').text if alertitem.find('alert') else "Unknown"
             desc = alertitem.find('desc').text if alertitem.find('desc') else ""
             issues.append(f"{alertname}: {desc}")
@@ -60,11 +60,11 @@ def summarize_bandit(data):
     if not data or "results" not in data:
         return ["No issues found."]
     lines = []
-    for i in data["results"]:
+    for issue in data["results"]:
         lines.append(
-            f"- `{i.get('filename','unknown')}:{i.get('line_number','?')}` — "
-            f"{i.get('issue_text','No description')} "
-            f"(Severity: {i.get('issue_severity','N/A')}, Confidence: {i.get('issue_confidence','N/A')})"
+            f"- `{issue.get('filename','unknown')}:{issue.get('line_number','?')}` — "
+            f"{issue.get('issue_text','No description')} "
+            f"(Severity: {issue.get('issue_severity','N/A')}, Confidence: {issue.get('issue_confidence','N/A')})"
         )
     return lines
 
@@ -93,16 +93,14 @@ def summarize_trivy(data):
     return lines or ["No issues found."]
 
 def summarize_zap(path):
-    if not os.path.isfile(path):
+    if not path or not os.path.isfile(path):
         return ["No issues found."]
-    # Extract critical issues from ZAP HTML report
     html_content = load_html(path)
     issues = extract_zap_critical_issues(html_content)
     if issues:
-        lines = [f"- {issue}" for issue in issues]
+        return [f"- {issue}" for issue in issues]
     else:
-        lines = ["✅ No OWASP ZAP critical alerts found."]
-    return lines
+        return ["✅ No OWASP ZAP critical alerts found."]
 
 def contains_critical(data, tool):
     if not data:
