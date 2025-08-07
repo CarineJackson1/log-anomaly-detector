@@ -42,22 +42,97 @@ jobs:
           cd frontend
           npm test -- --watchAll=false || exit 0
 
-      - name: Run Semgrep Frontend Scan
+      - name: Install security tools
         run: |
-          pip install semgrep
-          semgrep --config .github/semgrep/frontend-rules.yml frontend --error || true
+          pip install semgrep bandit
+          npm install -g gitleaks retire trivy
+
+      - name: Run Semgrep Frontend Scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json || true
 
       - name: Run Semgrep Backend Scan
-        run: |
-          semgrep --config .github/semgrep/backend-rules.yml backend --error || true
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
 
       - name: Run Bandit Backend Scan
-        run: |
-          pip install bandit
-          bandit -r backend -f json -o bandit-report.json || true
+        run: bandit -r backend -f json -o bandit-report.json || true
+
+      - name: Run Gitleaks Scan
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+
+      - name: Run Retire.js Scan
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+
+      - name: Run Trivy Scan (Docker image)
+        run: trivy fs --format json --output trivy-report.json . || true
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
-          path: bandit-report.json
+          path: |
+            semgrep-frontend.json
+            semgrep-backend.json
+            bandit-report.json
+            gitleaks-report.json
+            retire-frontend.json
+            trivy-report.json
+
+      - name: Generate and post PR comment summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            function parseFindings(report, type) {
+              if (!report) return [];
+              switch(type) {
+                case 'semgrep':
+                  if (!report.results) return [];
+                  return report.results.map(f => `- ${f.check_id || 'rule'} in \`${f.path}\`: ${f.extra?.message || ''} (severity: ${f.extra?.severity || 'N/A'})`);
+                case 'bandit':
+                  if (!report.results) return [];
+                  return report.results.map(f => `- ${f.test_id || 'bandit'} in \`${f.filename}\`: ${f.issue_text} (severity: ${f.issue_severity})`);
+                case 'gitleaks':
+                  if (!report.findings) return [];
+                  return report.findings.map(f => `- [SECRET] \`${f.description}\` in \`${f.file}\``);
+                case 'retire':
+                  if (!report.data) return [];
+                  return report.data.map(f => `- [HIGH] \`${f.component}\` (${f.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in \`${f.file}\``);
+                case 'trivy':
+                  if (!report.Results) return [];
+                  let vulns = [];
+                  for (const res of report.Results) {
+                    if (res.Vulnerabilities) {
+                      for (const v of res.Vulnerabilities) {
+                        vulns.push(`- [${v.Severity}] \`${v.VulnerabilityID}\` in \`${res.Target}\`: ${v.Title}`);
+                      }
+                    }
+                  }
+                  return vulns;
+                default:
+                  return [];
+              }
+            }
+
+            const semgrepFrontend = JSON.parse(fs.readFileSync('semgrep-frontend.json', 'utf8'));
+            const semgrepBackend = JSON.parse(fs.readFileSync('semgrep-backend.json', 'utf8'));
+            const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
+            const gitleaks = JSON.parse(fs.readFileSync('gitleaks-report.json', 'utf8'));
+            const retire = JSON.parse(fs.readFileSync('retire-frontend.json', 'utf8'));
+            const trivy = JSON.parse(fs.readFileSync('trivy-report.json', 'utf8'));
+
+            let commentBody = "## 🛡️ Dependabot Security Scan Summary\n\n";
+
+            commentBody += "### Semgrep Frontend\n" + (parseFindings(semgrepFrontend, 'semgrep').join('\n') || "No issues found.") + "\n\n";
+            commentBody += "### Semgrep Backend\n" + (parseFindings(semgrepBackend, 'semgrep').join('\n') || "No issues found.") + "\n\n";
+            commentBody += "### Bandit\n" + (parseFindings(bandit, 'bandit').join('\n') || "No issues found.") + "\n\n";
+            commentBody += "### Gitleaks\n" + (parseFindings(gitleaks, 'gitleaks').join('\n') || "No issues found.") + "\n\n";
+            commentBody += "### Retire.js\n" + (parseFindings(retire, 'retire').join('\n') || "No issues found.") + "\n\n";
+            commentBody += "### Trivy\n" + (parseFindings(trivy, 'trivy').join('\n') || "No issues found.") + "\n\n";
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody,
+            });
