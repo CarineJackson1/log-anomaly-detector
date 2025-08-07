@@ -10,35 +10,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 🧾 Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep
+      - name: 🕵️ Install Semgrep
         run: pip install semgrep
 
-      - name: Run Semgrep Backend Scan
-        run: |
-          semgrep --config=p/your-backend-policy --json --output=security-reports/semgrep/backend/raw.json ./backend
+      - name: 📦 Run Semgrep backend scan (Python)
+        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json ./backend
 
-      - name: Run Semgrep Frontend Scan
-        run: |
-          semgrep --config=p/your-frontend-policy --json --output=security-reports/semgrep/frontend/raw.json ./frontend
+      - name: 📦 Run Semgrep frontend scan (JavaScript)
+        run: semgrep --config=p/ci/javascript --json --output=security-reports/semgrep/frontend/raw.json ./frontend
 
-      - name: Install dependencies for report generation
-        run: pip install --upgrade pip
-
-      - name: Generate Backend Report
+      - name: 🧠 Generate backend report
         run: python scripts/generate_semgrep_report.py security-reports/semgrep/backend/raw.json
 
-      - name: Generate Frontend Report
+      - name: 🧠 Generate frontend report
         run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/raw.json
 
-      - name: Upload Semgrep Reports
+      - name: ☁️ Upload reports as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
