@@ -1,5 +1,7 @@
 #Security
 
+![Security Status](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/AstroSkill/atsroskil-lms-connector/main/.github/badges/security-badge.json)
+
 ⸻
 
 🚀 Overview
@@ -70,7 +72,3 @@ PRs are:
 	•	✅ Branch protection is enabled on main and develop
 	•	✅ Security reports are uploaded for audit trails
 	•	✅ Auto-summary comments are generated on PRs for transparency
-
-⸻
-
-Would you also like a security dashboard badge using a summary_report.md parser? I can help you generate one and pin it to the top of your repo or docs.
