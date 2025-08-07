@@ -1,4 +1,4 @@
-name: 🛡️ Full Security Scan Pipeline
+name: 🛡️ Full Security Scan Pipeline with ZAP
 
 on:
   pull_request:
@@ -61,7 +61,7 @@ jobs:
         if: matrix.scanner == 'trivy'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: your-image-name:latest
+          image-ref: your-image-name:latest  # <-- Replace with your Docker image name/tag
           format: json
           output: trivy-report.json
 
@@ -107,12 +107,30 @@ jobs:
           name: trivy-report
           path: trivy-report.json
 
-  post-summary:
+  zap_scan:
+    runs-on: ubuntu-latest
     needs: security-scans
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable \
+            zap-baseline.py -t https://secdevops-demo-frontend.onrender.com -r zap_report.html || true
+          mkdir -p security-reports/raw
+          mv zap_report.html security-reports/raw/
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: security-reports/raw/zap_report.html
+
+  post-summary:
+    needs: [security-scans, zap_scan]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Download all scan reports
         uses: actions/download-artifact@v3
@@ -138,6 +156,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: trivy-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: zap-report
           path: security-reports/
 
       - name: Generate and post summary comment
@@ -180,6 +202,14 @@ jobs:
               return vulns;
             }
 
+            function parseZap() {
+              const zapPath = path.join('security-reports', 'raw', 'zap_report.html');
+              if (fs.existsSync(zapPath)) {
+                return ['- [INFO] OWASP ZAP scan completed. See the [ZAP Report](zap_report.html).'];
+              }
+              return [];
+            }
+
             function loadJSON(filePath) {
               if (!fs.existsSync(filePath)) return null;
               return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -191,19 +221,8 @@ jobs:
             const retire = loadJSON('security-reports/retire-frontend.json') || {};
             const gitleaks = loadJSON('security-reports/gitleaks-report.json') || {};
             const trivy = loadJSON('security-reports/trivy-report.json') || {};
+            const zap = parseZap();
 
             let commentBody = "## 🛡️ Security Scan Summary\n\n";
 
-            commentBody += "### Semgrep Frontend\n" + (parseSemgrep(semgrepFrontend).join("\n") || "No issues found.") + "\n\n";
-            commentBody += "### Semgrep Backend\n" + (parseSemgrep(semgrepBackend).join("\n") || "No issues found.") + "\n\n";
-            commentBody += "### Bandit\n" + (parseBandit(bandit).join("\n") || "No issues found.") + "\n\n";
-            commentBody += "### Retire.js\n" + (parseRetire(retire).join("\n") || "No issues found.") + "\n\n";
-            commentBody += "### Gitleaks\n" + (parseGitleaks(gitleaks).join("\n") || "No issues found.") + "\n\n";
-            commentBody += "### Trivy\n" + (parseTrivy(trivy).join("\n") || "No issues found.") + "\n\n";
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: commentBody
-            });
+            commentBody += "### Semgrep Frontend\n" + (parseSemgrep(semgrepFrontend).join("\n") || "No issues found.") + "\n\n
