@@ -1,16 +1,19 @@
-      - name: Run OWASP ZAP baseline scan
+      - name: 🧪 OWASP ZAP Baseline Scan
         run: |
           docker run \
+            --rm \
             -v $(pwd):/zap/wrk:rw \
             -t ghcr.io/zaproxy/zap-stable \
             zap-baseline.py \
             -t https://secdevops-demo-frontend.onrender.com \
-            -r zap_report.html
-          # Move report to accessible location
-          cp zap_report.html zap-output.html
+            -r zap_report.html || true
 
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v3
+          # Move ZAP report to a consistent location
+          mkdir -p security-reports/raw
+          mv zap_report.html security-reports/raw/zap-report.html
+
+      - name: 📤 Upload ZAP Report
+        uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap-output.html
+          path: security-reports/raw/zap-report.html
