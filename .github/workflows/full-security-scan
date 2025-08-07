@@ -1,0 +1,91 @@
+name: Full Security Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  full-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python & Node.js
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          pip install semgrep bandit reportlab beautifulsoup4
+          npm ci
+
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+
+      - name: Run Semgrep frontend scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
+
+      - name: Run Semgrep backend scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
+
+      - name: Run Gitleaks scan
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
+
+      - name: Run Retire.js scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          format: json
+          output: security-reports/raw/trivy-report.json
+          scan-type: fs
+          scan-path: .
+
+      - name: Generate combined report (MD + PDF)
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md
+
+      - name: Upload full scan reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/summary_report.pdf
+            security-reports/raw/
+
+      - name: Post PR comment with full report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!context.issue.number) {
+              console.log("No PR number found, skipping comment.");
+              return;
+            }
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Full Security Scan Report\n\n${summary}`
+            });
