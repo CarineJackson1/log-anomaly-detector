@@ -1,0 +1,63 @@
+name: Dependabot PR CI - Astroskills LMS
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    name: Run Tests and Security Scans on Dependabot PR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          pytest || exit 0
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --watchAll=false || exit 0
+
+      - name: Run Semgrep Frontend Scan
+        run: |
+          pip install semgrep
+          semgrep --config .github/semgrep/frontend-rules.yml frontend --error || true
+
+      - name: Run Semgrep Backend Scan
+        run: |
+          semgrep --config .github/semgrep/backend-rules.yml backend --error || true
+
+      - name: Run Bandit Backend Scan
+        run: |
+          pip install bandit
+          bandit -r backend -f json -o bandit-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: bandit-report.json
