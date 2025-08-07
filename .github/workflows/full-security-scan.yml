@@ -3,6 +3,8 @@ name: 🛡️ Full Security Scan Pipeline
 on:
   pull_request:
     branches: [main, develop]
+  push:
+    branches: [develop]
 
 permissions:
   contents: write
@@ -12,84 +14,85 @@ permissions:
 jobs:
   security-scans:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 🧾 Checkout repository
+      - name: 🧾 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.x
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: 🧰 Install Python dependencies
-        run: |
-          pip install semgrep bandit beautifulsoup4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-      - name: 🛠 Install Retire.js and other tools
-        run: |
-          npm install -g retire
-          sudo apt-get update && sudo apt-get install -y jq
+      - name: 📁 Prepare directories
+        run: mkdir -p security-reports/semgrep backend ./frontend/src
 
-      - name: 🔍 Run Bandit scan
+      - name: 📦 Install scanning tools
+        run: |
+          pip install semgrep beautifulsoup4 bandit
+          npm install -g retire gitleaks trivy
+
+      - name: 🔍 Debug backend files
+        run: |
+          echo "Listing Python files in backend:"
+          find backend -name '*.py' || echo "❌ No Python files found in backend"
+
+      - name: Run Semgrep backend scan
+        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
+
+      - name: Run Semgrep frontend React scan
+        run: semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
+
+      - name: Run Semgrep frontend TypeScript scan
+        run: semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
+
+      - name: Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
-      - name: 🔍 Run Semgrep frontend React scan
-        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend-react.json ./frontend/src || true
+      - name: Run Retire.js scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
-      - name: 🔍 Run Semgrep frontend TS scan
-        run: semgrep --config=p/typescript --json --output=security-reports/raw/semgrep-frontend-ts.json ./frontend/src || true
+      - name: Run Gitleaks scan
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
 
-      - name: 🔍 Run Semgrep backend scan
-        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
+      - name: Run Trivy scan
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
 
-      - name: 🔍 Run Retire.js scan
-        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-report.json || true
+      - name: 📁 Ensure ZAP report dir exists
+        run: mkdir -p security-reports/raw
 
-      - name: 🔍 Run Gitleaks scan
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
-
-      - name: 🔍 Run Trivy scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: your-image-name:latest
-          format: json
-          output: security-reports/raw/trivy-report.json
-
-      - name: 🔍 Run OWASP ZAP scan
+      - name: Run OWASP ZAP Baseline Scan (optional)
         run: |
-          docker run --rm -v ${{ github.workspace }}:/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
             -t https://your-app-url.com -r security-reports/raw/zap-report.html || true
-
-      - name: 📁 Ensure report directory exists
-        run: mkdir -p security-reports
 
       - name: 🧠 Generate combined security report
         run: python .github/scripts/generate_full_report.py \
           --bandit security-reports/raw/bandit-report.json \
-          --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
-          --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
-          --semgrep-backend security-reports/raw/semgrep-backend.json \
+          --semgrep-frontend-react security-reports/semgrep/frontend/react.json \
+          --semgrep-frontend-ts security-reports/semgrep/frontend/ts.json \
+          --semgrep-backend security-reports/semgrep/backend/raw.json \
           --gitleaks security-reports/raw/gitleaks-report.json \
-          --retire security-reports/raw/retire-report.json \
+          --retire security-reports/raw/retire-frontend.json \
           --trivy security-reports/raw/trivy-report.json \
           --zap security-reports/raw/zap-report.html \
           --output security-reports/summary_report.md
 
-      - name: ☁️ Upload raw scan artifacts
+      - name: ☁️ Upload raw and combined reports
         uses: actions/upload-artifact@v4
         with:
-          name: raw-scan-results
-          path: security-reports/raw/
+          name: security-scan-reports
+          path: |
+            security-reports/raw/
+            security-reports/semgrep/
+            security-reports/summary_report.md
 
-      - name: ☁️ Upload combined report
-        uses: actions/upload-artifact@v4
-        with:
-          name: summary-report
-          path: security-reports/summary_report.md
-
-      - name: 💬 Post security summary comment on PR
+      - name: 💬 Post PR comment with security summary
         uses: actions/github-script@v7
         with:
           script: |
@@ -102,11 +105,11 @@ jobs:
               body: `## 🔐 Security Scan Summary\n\n${summary}`
             });
 
-      - name: ❌ Fail if critical issues found
+      - name: ❌ Fail if critical or high issues found
         run: |
           if grep -q "CRITICAL ISSUE FOUND" security-reports/summary_report.md; then
-            echo "Critical security issues found. Failing the job."
+            echo "Critical issues found, failing job."
             exit 1
           else
-            echo "No critical security issues found."
+            echo "No critical issues found."
           fi
