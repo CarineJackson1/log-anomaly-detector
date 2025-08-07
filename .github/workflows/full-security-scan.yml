@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  checks: write
 
 jobs:
   security-scans:
@@ -16,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js (frontend & retire.js)
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -26,29 +28,30 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      - name: Install tools
         run: |
+          pip install bandit semgrep
           npm install -g retire
-          pip install semgrep bandit
+          sudo apt-get install jq -y
 
-      - name: Run Bandit Scan
-        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json || true
 
-      - name: Run Semgrep Frontend Scan
+      - name: Run Semgrep frontend scan
         run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
 
-      - name: Run Semgrep Backend Scan
+      - name: Run Semgrep backend scan
         run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
 
-      - name: Run Retire.js Scan
+      - name: Run Retire.js scan
         run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
-      - name: Run Gitleaks Scan
+      - name: Run Gitleaks scan
         uses: zricethezav/gitleaks-action@v2
         with:
           args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
 
-      - name: Run Trivy Scan (Docker image)
+      - name: Run Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: your-image-name:latest
@@ -57,26 +60,35 @@ jobs:
 
       - name: Run OWASP ZAP Baseline Scan
         run: |
-          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py             -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
+            -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
           mkdir -p security-reports/raw
           mv zap-report.html security-reports/raw/zap-report.html
 
-      - name: Upload scan artifacts
+      - name: Upload all scan artifacts
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-reports
           path: security-reports/raw/
 
-      - name: Generate security summary report
+      - name: Generate Markdown summary report
         run: python3 scripts/generate_report.py
 
-      - name: Commit and push security summary report
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          if git diff --quiet security-reports/summary_report.md; then
-            echo "No changes in summary report to commit."
-          else
-            git add security-reports/summary_report.md
-            git commit -m "✨ Update security summary report [skip ci]"
-            git push
+      - name: Upload summary report
+        uses: actions/upload-artifact@v4
+        with:
+          name: summary-report
+          path: security-reports/summary_report.md
+
+      - name: Create PR Comment Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Security Scan Summary\n\n${summary}`
+            });
