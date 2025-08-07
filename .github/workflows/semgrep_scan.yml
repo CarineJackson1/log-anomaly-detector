@@ -18,9 +18,11 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: 📁 Ensure report directory exists
+        run: mkdir -p security-reports/semgrep backend ./frontend/src
+
       - name: 🕵️ Install Python dependencies
-        run: |
-          pip install semgrep beautifulsoup4
+        run: pip install semgrep beautifulsoup4
 
       - name: 🔍 Debug files being scanned
         run: |
@@ -30,18 +32,16 @@ jobs:
       - name: 📦 Run Semgrep backend scan
         run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
 
-      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
-        run: |
-          semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
-          semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
+      - name: 📦 Run Semgrep frontend React scan
+        run: semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
 
-      - name: 📁 Ensure report directory exists
-        run: mkdir -p security-reports/semgrep
+      - name: 📦 Run Semgrep frontend TS scan
+        run: semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
 
       - name: 🧠 Generate combined Semgrep report
         run: python .github/scripts/generate_full_report.py \
-          --semgrep-frontend security-reports/semgrep/frontend/react.json \
-          --semgrep-frontend security-reports/semgrep/frontend/ts.json \
+          --semgrep-frontend-react security-reports/semgrep/frontend/react.json \
+          --semgrep-frontend-ts security-reports/semgrep/frontend/ts.json \
           --semgrep-backend security-reports/semgrep/backend/raw.json \
           --output security-reports/semgrep/combined_report.md
 
