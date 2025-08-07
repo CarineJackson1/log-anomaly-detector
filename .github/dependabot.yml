@@ -1,94 +1,73 @@
 version: 2
 updates:
-  # Backend Python dependencies
   - package-ecosystem: "pip"
-    directory: "/backend"
+    directory: "/backend"      # assuming Python backend deps here
     schedule:
       interval: "daily"
-    labels:
-      - "auto-merge"
-      - "dependencies"
+    open-pull-requests-limit: 5
+    target-branch: develop
     reviewers:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
     assignees:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
     security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
-    open-pull-requests-limit: 5
-    auto-merge: true
-    target-branch: develop
     rebase-strategy: auto
 
-  # Frontend npm dependencies
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directory: "/frontend"     # React frontend deps here
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-    labels:
-      - "auto-merge"
-      - "dependencies"
+    target-branch: develop
     reviewers:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
     assignees:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
+    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
-    versioning-strategy: increase
-    auto-merge: true
-    security-updates-only: true
-    target-branch: develop
     rebase-strategy: auto
 
-  # GitHub Actions workflows (usually at repo root)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
-    labels:
-      - "auto-merge"
-      - "dependencies"
+    target-branch: develop
     reviewers:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
     assignees:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
+    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
-    auto-merge: true
-    security-updates-only: true
-    target-branch: develop
     rebase-strategy: auto
 
-  # Docker image updates (if you have Dockerfiles in root or backend)
   - package-ecosystem: "docker"
-    directory: "/backend"
+    directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
-    labels:
-      - "auto-merge"
-      - "dependencies"
+    target-branch: develop
     reviewers:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
     assignees:
-      - "CarineJackson1"
-      - "sajanamhr21"
+      - CarineJackson1
+      - sajanamhr21
+    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
-    auto-merge: true
-    security-updates-only: true
-    target-branch: develop
     rebase-strategy: auto
