@@ -15,8 +15,9 @@ rules:
     message: "Avoid dangerouslySetInnerHTML — it's an XSS risk."
     severity: ERROR
     languages: [javascript, typescript]
-    pattern: |
-      dangerouslySetInnerHTML={{ __html: $HTML }}
+    patterns:
+      - pattern: >
+          <*$ELEMENT dangerouslySetInnerHTML={{ __html: $HTML }} />
 
   - id: no-hardcoded-secrets
     message: "Potential hardcoded secret detected."
