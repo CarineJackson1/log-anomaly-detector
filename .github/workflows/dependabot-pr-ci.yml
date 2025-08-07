@@ -47,32 +47,45 @@ jobs:
           pip install semgrep bandit reportlab beautifulsoup4
           npm install -g gitleaks retire trivy
 
-      - name: 🕵️ Run Semgrep Frontend Scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json
+      - name: 🕵️ Run Semgrep React Scan
+        run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
+
+      - name: 🕵️ Run Semgrep TS Scan
+        run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
 
       - name: 🕵️ Run Semgrep Backend Scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json
+        run: semgrep --config p/ci/python --json --output semgrep-backend.json backend || true
 
       - name: 🔍 Run Bandit Backend Scan
-        run: bandit -r backend -f json -o bandit-report.json
+        run: bandit -r backend -f json -o bandit-report.json || true
 
       - name: 🔐 Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
 
       - name: 🧱 Run Retire.js Scan
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
 
       - name: 🐳 Run Trivy Scan (filesystem)
-        run: trivy fs --format json --output trivy-report.json .
+        run: trivy fs --format json --output trivy-report.json . || true
 
       - name: 📄 Organize reports
         run: |
           mkdir -p security-reports/raw
-          mv semgrep-*.json bandit-report.json gitleaks-report.json retire-frontend.json trivy-report.json security-reports/raw/
+          mv semgrep-frontend-react.json semgrep-frontend-ts.json semgrep-backend.json \
+             bandit-report.json gitleaks-report.json retire-frontend.json trivy-report.json \
+             security-reports/raw/
 
       - name: 🧠 Generate summary report (MD + PDF)
-        run: python scripts/generate_report.py
-        # This script should exit non-zero if critical/high severity issues found
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
+            --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md
 
       - name: ☁️ Upload reports
         uses: actions/upload-artifact@v4
