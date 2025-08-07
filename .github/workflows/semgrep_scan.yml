@@ -19,7 +19,7 @@ jobs:
           python-version: '3.x'
 
       - name: 📁 Ensure report directory exists
-        run: mkdir -p security-reports/semgrep backend ./frontend/src
+        run: mkdir -p security-reports/semgrep
 
       - name: 🕵️ Install Python dependencies
         run: pip install semgrep beautifulsoup4
