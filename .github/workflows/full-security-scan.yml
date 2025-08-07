@@ -7,21 +7,22 @@ on:
       - develop
 
 permissions:
-  contents: write  # Needed for pushing updated summary report
+  contents: write  # Needed to push updated summary report back to the repo
 
 jobs:
   security-scans:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js (frontend & retire.js)
+      - name: Setup Node.js (for frontend & retire.js)
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Setup Python
+      - name: Setup Python (for semgrep, bandit)
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -29,9 +30,10 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g retire
+          pip install --upgrade pip
           pip install semgrep bandit
 
-      - name: Run Bandit Scan
+      - name: Run Bandit Scan (Python backend)
         run: bandit -r backend -f json -o bandit-report.json
 
       - name: Run Semgrep Frontend Scan
@@ -40,29 +42,29 @@ jobs:
       - name: Run Semgrep Backend Scan
         run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
 
-      - name: Run Retire.js Scan
+      - name: Run Retire.js Scan (frontend dependencies)
         run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
 
-      - name: Run Gitleaks Scan
+      - name: Run Gitleaks Scan (Secrets detection)
         uses: zricethezav/gitleaks-action@v2
         with:
           args: --redact --report-path=gitleaks-report.json || true
 
-      - name: Run Trivy Scan (Docker image)
+      - name: Run Trivy Scan (Container image vulnerabilities)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: your-image-name:latest  # Replace with your actual image name if you scan a container
+          image-ref: your-image-name:latest # Replace with your actual Docker image if scanning containers
           format: json
           output: trivy-report.json
 
-      - name: Run OWASP ZAP Baseline Scan
+      - name: Run OWASP ZAP Baseline Scan (Dynamic Application Security Testing)
         run: |
           docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
             -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
           mkdir -p security-reports/raw
           mv zap-report.html security-reports/raw/zap-report.html
 
-      - name: Upload scan artifacts
+      - name: Upload all scan artifacts
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-reports
@@ -75,10 +77,10 @@ jobs:
             trivy-report.json
             security-reports/raw/zap-report.html
 
-      - name: Generate security summary report
+      - name: Generate consolidated security summary report
         run: python3 scripts/generate_report.py
 
-      - name: Commit and push security summary report
+      - name: Commit and push updated security summary report
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
