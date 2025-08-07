@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import sys
@@ -6,7 +7,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from bs4 import BeautifulSoup
-import argparse
 
 REPORT_PATHS = {
     "bandit": "Bandit Backend",
@@ -41,7 +41,7 @@ def extract_zap_critical_issues(html_content):
     issues = []
     for alertitem in soup.select('alertitem'):
         riskcode = alertitem.find('riskcode')
-        if riskcode and int(riskcode.text) >= 2:  # 2=Medium, 3=High
+        if riskcode and int(riskcode.text) >= 2:  # 2=Medium, 3=High severity
             alertname = alertitem.find('alert').text if alertitem.find('alert') else "Unknown"
             desc = alertitem.find('desc').text if alertitem.find('desc') else ""
             issues.append(f"{alertname}: {desc}")
@@ -50,15 +50,24 @@ def extract_zap_critical_issues(html_content):
 def summarize_semgrep(data):
     if not data or "results" not in data:
         return ["No issues found."]
-    lines = []
-    for issue in data["results"]:
-        lines.append(f"- `{issue.get('path','unknown')}:{issue.get('start',{}).get('line','?')}` — {issue.get('extra', {}).get('message', 'No message')} (Severity: {issue.get('extra', {}).get('severity', 'N/A')})")
+    lines = [
+        f"- `{issue.get('path','unknown')}:{issue.get('start',{}).get('line','?')}` — "
+        f"{issue.get('extra', {}).get('message', 'No message')} "
+        f"(Severity: {issue.get('extra', {}).get('severity', 'N/A')})"
+        for issue in data["results"]
+    ]
     return lines
 
 def summarize_bandit(data):
     if not data or "results" not in data:
         return ["No issues found."]
-    return [f"- `{i.get('filename','unknown')}:{i.get('line_number','?')}` — {i.get('issue_text','No description')} (Severity: {i.get('issue_severity','N/A')}, Confidence: {i.get('issue_confidence','N/A')})" for i in data["results"]]
+    lines = [
+        f"- `{i.get('filename','unknown')}:{i.get('line_number','?')}` — "
+        f"{i.get('issue_text','No description')} "
+        f"(Severity: {i.get('issue_severity','N/A')}, Confidence: {i.get('issue_confidence','N/A')})"
+        for i in data["results"]
+    ]
+    return lines
 
 def summarize_gitleaks(data):
     if not data or "findings" not in data:
@@ -99,22 +108,27 @@ def contains_critical(data, tool):
         return False
     if tool in ["semgrep_frontend", "semgrep_backend"]:
         return any(issue.get("extra", {}).get("severity", "").upper() in ["CRITICAL", "ERROR", "HIGH"] for issue in data.get("results", []))
-    if tool == "bandit":
+    elif tool == "bandit":
         return any(issue.get("issue_severity", "").upper() in ["HIGH", "CRITICAL"] for issue in data.get("results", []))
-    if tool == "gitleaks":
+    elif tool == "gitleaks":
         return bool(data.get("findings"))
-    if tool == "retire":
+    elif tool == "retire":
         return bool(data.get("data"))
-    if tool == "trivy":
+    elif tool == "trivy":
         return any(v.get("Severity", "").upper() in ["CRITICAL", "HIGH"] for r in data.get("Results", []) for v in r.get("Vulnerabilities", []))
-    if tool == "zap":
+    elif tool == "zap":
         return os.path.isfile(data) and len(extract_zap_critical_issues(load_html(data))) > 0
     return False
 
 def generate_pdf(md_text, pdf_path):
     styles = getSampleStyleSheet()
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
-    story = [Paragraph(line, styles['Normal']) if line else Spacer(1,12) for line in md_text.split('\n')]
+    story = []
+    for line in md_text.split("\n"):
+        if line.strip() == "":
+            story.append(Spacer(1, 12))
+        else:
+            story.append(Paragraph(line, styles['Normal']))
     doc.build(story)
 
 def main():
@@ -129,18 +143,15 @@ def main():
     parser.add_argument("--output", required=True, help="Output markdown report path")
     args = parser.parse_args()
 
-    tool_data = {}
-
-    tool_data["bandit"] = load_json(args.bandit) if args.bandit else None
-
-    semgrep_front = load_json(args.semgrep_frontend) if args.semgrep_frontend else {"results": []}
-    tool_data["semgrep_frontend"] = semgrep_front
-
-    tool_data["semgrep_backend"] = load_json(args.semgrep_backend) if args.semgrep_backend else None
-    tool_data["gitleaks"] = load_json(args.gitleaks) if args.gitleaks else None
-    tool_data["retire"] = load_json(args.retire) if args.retire else None
-    tool_data["trivy"] = load_json(args.trivy) if args.trivy else None
-    tool_data["zap"] = args.zap  # just path
+    tool_data = {
+        "bandit": load_json(args.bandit) if args.bandit else None,
+        "semgrep_frontend": load_json(args.semgrep_frontend) if args.semgrep_frontend else {"results": []},
+        "semgrep_backend": load_json(args.semgrep_backend) if args.semgrep_backend else None,
+        "gitleaks": load_json(args.gitleaks) if args.gitleaks else None,
+        "retire": load_json(args.retire) if args.retire else None,
+        "trivy": load_json(args.trivy) if args.trivy else None,
+        "zap": args.zap  # just file path
+    }
 
     report_md = f"# 🔒 Security Scan Summary\n\nGenerated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     critical_found = False
