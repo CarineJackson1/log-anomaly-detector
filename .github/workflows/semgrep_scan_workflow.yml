@@ -41,9 +41,8 @@ jobs:
           security-reports/semgrep/backend/raw.json \
           security-reports/semgrep/combined_report.md
 
-      - name: ☁️ Upload reports as artifacts
+      - name: ☁️ Upload combined report artifact
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
-          path: |
-            security-reports/semgrep/combined_report.md
+          path: security-reports/semgrep/combined_report.md
