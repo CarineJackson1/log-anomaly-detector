@@ -1,7 +1,5 @@
 #Security
-
 ![🔐 Security Status](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/AstroSkill/astroskill-lms-connector/develop/.github/badges/security-badge.json)
-
 ⸻
 
 🚀 Overview
