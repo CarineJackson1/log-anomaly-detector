@@ -1,0 +1,77 @@
+name: 🛡️ Full Security Scan Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Full Security Checks
+    steps:
+      - name: 👋 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: ⚖️ Setup Python for Semgrep
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: 📁 Install required tools
+        run: |
+          pip install semgrep bandit
+          npm install -g retire
+
+      - name: 🔎 Semgrep Frontend Scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json
+
+      - name: 🔎 Semgrep Backend Scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json
+
+      - name: 🔧 Bandit Python Security Scan
+        run: bandit -r backend -f json -o bandit-backend.json
+
+      - name: 🚀 Retire.js Dependency Scan
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+
+      - name: 📂 Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-reports
+          path: |
+            semgrep-frontend.json
+            semgrep-backend.json
+            bandit-backend.json
+            retire-frontend.json
+
+      - name: 📄 Generate & Post Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            function summarizeJSON(filePath, label) {
+              if (!fs.existsSync(filePath)) return `\n\u274c ${label}: Report not found.`;
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              let findings = [];
+              if (data.results) {
+                findings = data.results.map(r => `- [${r.extra?.severity || 'N/A'}] ${r.check_id || r.rule_id} in \`${r.path}\`: ${r.extra?.message || r.issue_text}`);
+              } else if (data.data) {
+                findings = data.data.map(r => `- [HIGH] ${r.component} (${r.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in ${r.file}`);
+              } else if (data.errors) {
+                findings.push(`Error parsing ${label}`);
+              }
+              return `\n### ${label}\n` + (findings.length ? findings.join('\n') : 'No issues found.');
+            }
+
+            const summary = `## 📈 Security Scan Summary\n` +
+              summarizeJSON('semgrep-frontend.json', 'Semgrep Frontend') +
+              summarizeJSON('semgrep-backend.json', 'Semgrep Backend') +
+              summarizeJSON('bandit-backend.json', 'Bandit Python Scan') +
+              summarizeJSON('retire-frontend.json', 'Retire.js Scan');
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary,
+            });
