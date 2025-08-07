@@ -1,5 +1,5 @@
 from datetime import datetime
-from database import db
+from backend.database import db
 from sqlalchemy.orm import relationship
 
 # Employer model to represent employers in the system

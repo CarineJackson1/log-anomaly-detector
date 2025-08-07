@@ -1,5 +1,5 @@
 from marshmallow import Schema, fields, validate, post_load
-from models.user_model import User, UserRole
+from backend.models.user_model import User, UserRole
 
 # User schema for serialization and deserialization
 # This schema defines the structure of user data for API requests and responses.
