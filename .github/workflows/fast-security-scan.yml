@@ -3,26 +3,32 @@ name: Fast Security Scan
 on:
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
 jobs:
   fast-scan:
+    name: Run Fast Security Scan (Semgrep)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: 🐍 Set up Python 3.x
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep
+      - name: 🔐 Install Semgrep and dependencies
         run: pip install semgrep beautifulsoup4
 
-      - name: Run Semgrep Scan
+      - name: 🕵️ Run Semgrep scan
         run: semgrep --config=p/ci --json --output=security-reports/semgrep.json . || true
 
-      - name: Upload Semgrep report
+      - name: ☁️ Upload Semgrep report artifact
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
