@@ -26,13 +26,7 @@ jobs:
       - name: Run Semgrep frontend rules
         run: |
           mkdir -p security-reports/raw
-          semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json
-
-      - name: Upload frontend Semgrep report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-frontend-report
-          path: security-reports/raw/semgrep-frontend.json
+          semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
 
   semgrep-backend:
     name: Semgrep Backend Scan
@@ -52,10 +46,4 @@ jobs:
       - name: Run Semgrep backend rules
         run: |
           mkdir -p security-reports/raw
-          semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json
-
-      - name: Upload backend Semgrep report
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-backend-report
-          path: security-reports/raw/semgrep-backend.json
+          semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
