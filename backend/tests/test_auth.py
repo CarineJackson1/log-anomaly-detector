@@ -119,3 +119,17 @@ def test_login_wrong_password(test_client):
     assert response.status_code == 401
     assert json_data["message"] == "Invalid email or password"
     
+def test_login_nonexistent_email(test_client):
+    payload = {
+        "email": "doesnotexist@example.com",
+        "password": "any123"
+    }
+    
+    response = test_client.post("/auth/login", json=payload)
+    json_data = response.get_json()
+    print("NONEXISTENT EMAIL:", json_data)
+    
+    assert response.status_code == 401
+    assert json_data["message"] == "Invalid email or password"
+    
+    
