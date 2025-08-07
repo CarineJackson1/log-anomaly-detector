@@ -1,98 +1,87 @@
-/* This container holds the fixed canvas in the background */
-.earth-canvas-container {
-  position: fixed;
+/* This container holds the fixed background image */
+.image-background-container {
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100vh;
   z-index: 0; /* Sits behind the content */
-  background-color: #000; /* Black background for space */
+  background-image: url('/Images/DarkEarth.jpg'); /* Path to your image in the public folder */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* This is the main scrollable wrapper for all your page content */
 .home-page-wrapper {
   position: relative;
   width: 100%;
-  z-index: 10; /* Ensures content is above the canvas */
+  z-index: 10; 
 }
 
 /* HERO SECTION */
 .hero {
-  min-height: 100vh; /* Takes up the full screen height */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 20px;
-  box-sizing: border-box;
   text-align: center;
-  position: relative;
-  color: #e0e0e0; /* Light text color for the dark background */
-  /* Gradient ensures text is readable over the bright parts of the Earth */
-  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+  color: #ffffff; /* White text for better contrast */
 }
 
 .home-wrapper {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  min-height: 100vh;
   width: 100%;
   padding: 0 5%;
-  position: relative;
-  box-sizing: border-box;
-  flex-direction: column;
 }
 
 .home-left {
-  flex: 0 0 55%;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-top: 30vh; /* Pushes content down to not obscure the Earth initially */
-}
-
-.home-tagline {
-  flex: 0 0 66%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  max-width: 800px; /* Constrain width for better readability */
 }
 
 .homeh1 {
-  font-weight: 500;
+  font-weight: 700; /* Bolder font */
   margin-bottom: 1rem;
-  font-size: 3rem;
-  color: yellow;
+  font-size: 5rem; /* Larger font size */
+  color: #FFFF00; /* Bright yellow */
+  line-height: 1.1;
 }
 
 .homeh2 {
   font-size: 1.75rem;
   font-weight: 400;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem; /* More space before the button */
+  color: #f0f0f0; /* Slightly off-white */
 }
 
 .actBtn-wrapper {
-  flex: 0 0 66%;
   display: flex;
-  justify-content: flex-start;
-  margin-top: 0;
+  justify-content: center; /* Center the button */
 }
 
+/* Button styles to match Figma outline button */
 .act-btn {
-  width: 300px;
-  padding: 12px 24px;
-  background-color: #3f51b5;
+  padding: 12px 32px;
+  background-color: transparent;
   color: #ffffff;
+  border: 2px solid #ffffff; /* White outline */
   border-radius: 6px;
   font-weight: 600;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  border: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .act-btn:hover {
-  background-color: #5c6bc0;
+  background-color: #ffffff;
+  color: #000000;
 }
 
 /* MISSION SECTION */
@@ -103,13 +92,12 @@
   align-items: center;
   justify-content: flex-start;
   width: 100%;
-  padding: 10rem 3rem 4rem 3rem; /* Added more top padding */
-  color: #000; /* Dark text for the light background */
-  /* This gradient creates the seamless transition from the 3D scene to your content */
+  padding: 10rem 3rem 4rem 3rem;
+  color: #000000; /* Dark text for the light background */
   background: linear-gradient(to bottom, 
-    transparent 0%, 
-    rgba(255, 255, 255, 0.8) 15%, /* Start fading to white */
-    #ffffff 30%, /* Fully white */
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.9) 15%, 
+    #ffffff 30%, 
     #ffffff 100%
   );
 }
@@ -153,7 +141,7 @@
 
 .mission-description {
   font-size: 1.35rem;
-  color: #333; /* Darker text for readability on white */
+  color: #333;
   font-weight: 500;
   text-align: left;
   margin-bottom: 2.5rem;
@@ -189,49 +177,19 @@
   fill: white;
 }
 
-/* ... (keep your existing keyframes and responsive media queries) ... */
-
 @media (max-width: 768px) {
-  .home-left {
-    padding-top: 20vh;
+  .homeh1 {
+    font-size: 3rem;
   }
-  .hero .homeh1 {
-    font-size: 2.5rem;
-  }
-  .hero .homeh2 {
-    font-size: 1.2rem;
-  }
-  .hero .act-btn {
-    padding: 12px 25px;
-    font-size: 1rem;
-  }
-  .home-wrapper {
-    flex-direction: column;
-  }
-  .home-left {
-    flex: none;
-    width: 100%;
-  }
-  .home-tagline {
-    flex: none;
-    width: 100%;
-  }
-  .actBtn-wrapper {
-    justify-content: center;
+  .homeh2 {
+    font-size: 1.25rem;
   }
   .mission-content {
     flex-direction: column;
     gap: 2rem;
   }
-  .mission-img {
-    height: auto;
-    width: 100%;
-  }
-  .M-Img {
+  .mission-img, .M-Img {
     width: 100%;
     height: auto;
-  }
-  .mission-text-button-container {
-    max-width: 100%;
   }
 }
