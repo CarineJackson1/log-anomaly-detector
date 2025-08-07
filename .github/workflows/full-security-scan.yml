@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js (for frontend & retire.js)
+      - name: Setup Node.js (frontend & retire.js)
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -51,7 +51,7 @@ jobs:
       - name: Run Trivy Scan (Docker image)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: your-image-name:latest
+          image-ref: your-image-name:latest  # Replace with your actual image name if you scan a container
           format: json
           output: trivy-report.json
 
