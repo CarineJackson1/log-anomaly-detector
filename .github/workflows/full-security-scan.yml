@@ -5,90 +5,205 @@ on:
     branches: [main, develop]
 
 jobs:
-  security-scan:
+  security-scans:
     runs-on: ubuntu-latest
-    name: Full Security Checks
+    strategy:
+      matrix:
+        scanner: [bandit, semgrep-frontend, semgrep-backend, retire, gitleaks, trivy]
     steps:
-      - name: 👋 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: ⚖️ Setup Python for Semgrep
+      - name: Setup Node.js (for frontend & retire.js)
+        if: matrix.scanner == 'semgrep-frontend' || matrix.scanner == 'retire'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Setup Python (for bandit, semgrep-backend)
+        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend'
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      - name: 📁 Install required tools
+      - name: Install dependencies
+        if: matrix.scanner == 'retire'
+        run: npm install -g retire
+
+      - name: Install Semgrep and Bandit
+        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend' || matrix.scanner == 'semgrep-frontend'
         run: |
           pip install semgrep bandit
-          npm install -g retire
 
-      - name: 🔎 Semgrep Frontend Scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json
+      - name: Run Bandit Scan
+        if: matrix.scanner == 'bandit'
+        run: bandit -r backend -f json -o bandit-report.json
 
-      - name: 🔎 Semgrep Backend Scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json
+      - name: Run Semgrep Frontend Scan
+        if: matrix.scanner == 'semgrep-frontend'
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json || true
 
-      - name: 🔧 Bandit Python Security Scan
-        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json
+      - name: Run Semgrep Backend Scan
+        if: matrix.scanner == 'semgrep-backend'
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
 
-      - name: 🚀 Retire.js Dependency Scan
-        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+      - name: Run Retire.js Scan
+        if: matrix.scanner == 'retire'
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
 
-      - name: 🔊 OWASP ZAP Baseline Scan
-        run: |
-          docker run \
-            --rm \
-            -v $(pwd):/zap/wrk:rw \
-            -t ghcr.io/zaproxy/zap-stable \
-            zap-baseline.py \
-            -t https://secdevops-demo-frontend.onrender.com \
-            -r zap_report.html || true
+      - name: Run Gitleaks Scan
+        if: matrix.scanner == 'gitleaks'
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: --redact --report-path=gitleaks-report.json || true
 
-          mkdir -p security-reports/raw
-          mv zap_report.html security-reports/raw/zap-report.html
+      - name: Run Trivy Scan (Docker image)
+        if: matrix.scanner == 'trivy'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: your-image-name:latest
+          format: json
+          output: trivy-report.json
 
-      - name: 📂 Upload scan artifacts
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'bandit'
         uses: actions/upload-artifact@v4
         with:
-          name: security-scan-reports
-          path: |
-            security-reports/raw/semgrep-frontend.json
-            security-reports/raw/semgrep-backend.json
-            security-reports/raw/bandit-backend.json
-            security-reports/raw/retire-frontend.json
-            security-reports/raw/zap-report.html
+          name: bandit-report
+          path: bandit-report.json
 
-      - name: 📄 Generate markdown summary
-        run: |
-          python .github/scripts/generate_summary.py
-
-      - name: 📈 Upload summary markdown
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'semgrep-frontend'
         uses: actions/upload-artifact@v4
         with:
-          name: security-summary
-          path: security-reports/summary_report.md
+          name: semgrep-frontend-report
+          path: semgrep-frontend.json
 
-      - name: 📉 Post summary comment
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'semgrep-backend'
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-backend-report
+          path: semgrep-backend.json
+
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'retire'
+        uses: actions/upload-artifact@v4
+        with:
+          name: retire-frontend-report
+          path: retire-frontend.json
+
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'gitleaks'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+
+      - name: Upload scan artifacts
+        if: matrix.scanner == 'trivy'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
+
+  post-summary:
+    needs: security-scans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download all scan reports
+        uses: actions/download-artifact@v3
+        with:
+          name: bandit-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: semgrep-frontend-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: semgrep-backend-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: retire-frontend-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: gitleaks-report
+          path: security-reports/
+      - uses: actions/download-artifact@v3
+        with:
+          name: trivy-report
+          path: security-reports/
+
+      - name: Generate and post summary comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            function commentLink(label, path) {
-              return fs.existsSync(path)
-                ? `\n✅ ${label}: [View report artifact](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID})`
-                : `\n❌ ${label} report not found.`;
+            const path = require('path');
+
+            function parseSemgrep(data) {
+              if (!data.results) return [];
+              return data.results.map(r => `- [${r.extra?.severity || 'N/A'}] \`${r.check_id || r.rule_id}\` in \`${r.path}\`: ${r.extra?.message || r.message || r.issue_text}`);
             }
 
-            const summary = `## 📈 Security Scan Summary` +
-              commentLink('Semgrep Frontend', 'security-reports/raw/semgrep-frontend.json') +
-              commentLink('Semgrep Backend', 'security-reports/raw/semgrep-backend.json') +
-              commentLink('Bandit Backend', 'security-reports/raw/bandit-backend.json') +
-              commentLink('Retire.js', 'security-reports/raw/retire-frontend.json') +
-              commentLink('OWASP ZAP', 'security-reports/raw/zap-report.html');
+            function parseBandit(data) {
+              if (!data.results) return [];
+              return data.results.map(r => `- [${r.issue_severity || 'N/A'}] \`${r.test_id || 'bandit'}\` in \`${r.filename}\`: ${r.issue_text}`);
+            }
+
+            function parseRetire(data) {
+              if (!data.data) return [];
+              return data.data.map(r => `- [HIGH] \`${r.component}\` (${r.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in \`${r.file}\``);
+            }
+
+            function parseGitleaks(data) {
+              if (!data.findings) return [];
+              return data.findings.map(r => `- [SECRET] \`${r.description}\` in \`${r.file}\``);
+            }
+
+            function parseTrivy(data) {
+              if (!data.Results) return [];
+              let vulns = [];
+              for (const res of data.Results) {
+                if (res.Vulnerabilities) {
+                  for (const vuln of res.Vulnerabilities) {
+                    vulns.push(`- [${vuln.Severity}] \`${vuln.VulnerabilityID}\` in \`${res.Target}\`: ${vuln.Title}`);
+                  }
+                }
+              }
+              return vulns;
+            }
+
+            function loadJSON(filePath) {
+              if (!fs.existsSync(filePath)) return null;
+              return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            }
+
+            const bandit = loadJSON('security-reports/bandit-report.json') || {};
+            const semgrepFrontend = loadJSON('security-reports/semgrep-frontend.json') || {};
+            const semgrepBackend = loadJSON('security-reports/semgrep-backend.json') || {};
+            const retire = loadJSON('security-reports/retire-frontend.json') || {};
+            const gitleaks = loadJSON('security-reports/gitleaks-report.json') || {};
+            const trivy = loadJSON('security-reports/trivy-report.json') || {};
+
+            let commentBody = "## 🛡️ Security Scan Summary\n\n";
+
+            commentBody += "### Semgrep Frontend\n" + (parseSemgrep(semgrepFrontend).join("\n") || "No issues found.") + "\n\n";
+            commentBody += "### Semgrep Backend\n" + (parseSemgrep(semgrepBackend).join("\n") || "No issues found.") + "\n\n";
+            commentBody += "### Bandit\n" + (parseBandit(bandit).join("\n") || "No issues found.") + "\n\n";
+            commentBody += "### Retire.js\n" + (parseRetire(retire).join("\n") || "No issues found.") + "\n\n";
+            commentBody += "### Gitleaks\n" + (parseGitleaks(gitleaks).join("\n") || "No issues found.") + "\n\n";
+            commentBody += "### Trivy\n" + (parseTrivy(trivy).join("\n") || "No issues found.") + "\n\n";
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: summary,
+              body: commentBody
             });
