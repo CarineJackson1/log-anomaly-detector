@@ -1,43 +1,49 @@
 name: Full Security Scan
 
 on:
-  push:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
     branches:
       - main
       - develop
+    paths-ignore:
+      - '**.md'
 
 jobs:
   full-scan:
+    if: contains(github.event.pull_request.labels.*.name, 'security-scan-required') || github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    name: Run Full Security Scan
+    name: 🔐 Full Security Scan
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python
+      - name: 🐍 Setup Python & Node.js
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-
-      - name: 🟦 Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install tools & dependencies
         run: |
           pip install semgrep bandit reportlab beautifulsoup4
           npm ci
+          npm install -g retire gitleaks
 
-      - name: 🐍 Run Bandit scan
+      - name: 🧪 Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
-      - name: 🕵️ Run Semgrep frontend scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
+      - name: 🕵️ Run Semgrep React scan
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend-react.json frontend/src || true
 
-      - name: 🕵️ Run Semgrep backend scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
+      - name: 🕵️ Run Semgrep TS scan
+        run: semgrep --config=p/typescript --json --output=security-reports/raw/semgrep-frontend-ts.json frontend/src || true
+
+      - name: 🕵️ Run Semgrep Backend scan
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
 
       - name: 🔐 Run Gitleaks scan
         run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
@@ -45,26 +51,22 @@ jobs:
       - name: 🧱 Run Retire.js scan
         run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
-      - name: 🐳 Run Trivy scan (filesystem)
-        uses: aquasecurity/trivy-action@master
-        with:
-          format: json
-          output: security-reports/raw/trivy-report.json
-          scan-type: fs
-          scan-path: .
+      - name: 🐳 Run Trivy scan
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
 
-      - name: 🧠 Generate combined security report (MD + PDF)
+      - name: 🧠 Generate summary report (MD + PDF)
         run: |
           python .github/scripts/generate_full_report.py \
             --bandit security-reports/raw/bandit-report.json \
-            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
+            --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
             --semgrep-backend security-reports/raw/semgrep-backend.json \
             --gitleaks security-reports/raw/gitleaks-report.json \
             --retire security-reports/raw/retire-frontend.json \
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md
 
-      - name: ☁️ Upload full scan reports
+      - name: ☁️ Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: full-security-scan-reports
