@@ -100,3 +100,22 @@ def test_successful_login(test_client):
     assert "access_token" in json_data["data"]
     assert json_data["data"]["user"]["email"] == "login@example.com"
     assert json_data["message"] == "Login successful"
+    
+def test_login_wrong_password(test_client):
+    user = User(username="wrongpass", email="wrongpass@example.com", role="LEARNER")
+    user.set_password("correctpassword")
+    db.session.add(user)
+    db.session.commit()
+    
+    payload = {
+        "email": "wrongpass@example.com",
+        "password": "wrongpassword"
+    }
+    
+    response = test_client.post("/auth/login", json=payload)
+    json_data = response.get_json()
+    print("WRONG PASSWORD:", json_data)
+    
+    assert response.status_code == 401
+    assert json_data["message"] == "Invalid email or password"
+    
