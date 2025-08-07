@@ -1,0 +1,151 @@
+name: Security Scan Pipeline
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - 'release/*'
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  semgrep-quick-scan:
+    name: Fast Semgrep Scan (All PRs)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(github.ref, 'develop')
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep Frontend Scan
+        run: semgrep --config=p/react --json --output=semgrep-frontend.json ./frontend/src || true
+
+      - name: Run Semgrep Backend Scan
+        run: semgrep --config=p/ci/python --json --output=semgrep-backend.json ./backend || true
+
+      - name: Upload Semgrep Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-reports
+          path: |
+            semgrep-frontend.json
+            semgrep-backend.json
+
+  full-security-scan:
+    name: Full Security Scan (Dependabot, Main, Release Branches)
+    runs-on: ubuntu-latest
+    if: |
+      github.actor == 'dependabot[bot]' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/heads/release/')
+    needs: semgrep-quick-scan
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install semgrep bandit reportlab beautifulsoup4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+
+      - name: Run Semgrep frontend scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
+
+      - name: Run Semgrep backend scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
+
+      - name: Run Gitleaks scan
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
+
+      - name: Run Retire.js scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          format: json
+          output: security-reports/raw/trivy-report.json
+          scan-type: fs
+          scan-path: .
+
+      - name: Ensure report directory exists
+        run: mkdir -p security-reports/raw
+
+      - name: Generate combined security report (MD + PDF)
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --zap security-reports/raw/zap-report.html \
+            --output security-reports/summary_report.md
+
+      - name: Upload security scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/summary_report.pdf
+            security-reports/raw/
+
+      - name: Post PR comment with security summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!context.issue.number) {
+              console.log("No PR number found, skipping comment.");
+              return;
+            }
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Full Security Scan Summary\n\n${summary}`
+            });
+
+      - name: Label PR if critical issues found
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
