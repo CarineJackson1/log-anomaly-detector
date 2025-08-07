@@ -12,17 +12,15 @@ function App() {
   return (
     <>
       <div className="App-Container">
-      <Navbar />
-        <main className="flex-grow w-full mx-auto">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/learner" element={<Learner />} />
-            <Route path="/employer" element={<Employer />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/learner" element={<Learner />} />
+          <Route path="/employer" element={<Employer />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </div>
     </>
   );
