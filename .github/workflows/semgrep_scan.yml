@@ -53,10 +53,14 @@ jobs:
           path: security-reports/semgrep/combined_report.md
 
       - name: 💬 Post PR comment with combined report
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            console.log("PR number:", context.issue.number);
+            if (!context.issue.number) {
+              console.log("No pull request number found in context. Skipping PR comment.");
+              return;
+            }
             const fs = require('fs');
             const report = fs.readFileSync('security-reports/semgrep/combined_report.md', 'utf8');
             await github.rest.issues.createComment({
