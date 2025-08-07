@@ -30,7 +30,6 @@ jobs:
         run: |
           pip install bandit semgrep reportlab
           npm install -g retire
-          sudo apt-get install jq -y
 
       - name: Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
@@ -47,7 +46,8 @@ jobs:
       - name: Run Gitleaks scan
         uses: zricethezav/gitleaks-action@v2
         with:
-          args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
+          args: --redact --report-path=security-reports/raw/gitleaks-report.json
+          fail-on-error: false
 
       - name: Run Trivy scan
         uses: aquasecurity/trivy-action@master
@@ -72,6 +72,15 @@ jobs:
           path: |
             security-reports/summary_report.md
             security-reports/summary_report.pdf
+
+      - name: Fail if critical issues found
+        run: |
+          if grep -qi "CRITICAL" security-reports/summary_report.md; then
+            echo "Critical issues found! Failing the job."
+            exit 1
+          else
+            echo "No critical issues found."
+          fi
 
       - name: Comment report on PR
         uses: actions/github-script@v7
