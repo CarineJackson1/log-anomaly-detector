@@ -21,27 +21,6 @@ jobs:
       - name: 🕵️ Install Semgrep
         run: pip install semgrep
 
-<<<<<<< HEAD
-      # Backend scan at project root
-      - name: 📦 Run Semgrep backend scan (Python)
-        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json .
-
-      # Frontend React and TypeScript scans
-      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
-        run: |
-          semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src
-          semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src
-
-      # Generate backend report and fail on ERROR-level issues
-      - name: 🧠 Generate backend report
-        run: python scripts/generate_semgrep_report.py security-reports/semgrep/backend/report.md security-reports/semgrep/backend/raw.json
-
-      # Generate combined frontend report and fail on ERROR-level issues
-      - name: 🧠 Generate combined frontend report
-        run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/report.md security-reports/semgrep/frontend/react.json security-reports/semgrep/frontend/ts.json
-
-      # Upload reports as artifacts
-=======
       - name: 🔍 Debug files being scanned
         run: |
           echo "Listing Python files in backend:"
@@ -50,12 +29,12 @@ jobs:
       - name: 📦 Run Semgrep backend scan
         run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
 
-           - name: 📦 Run Semgrep frontend scan (React + TypeScript)
+      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
         run: |
           semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
           semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
 
-      - name: Ensure report directory exists
+      - name: 📁 Ensure report directory exists
         run: mkdir -p security-reports/semgrep
 
       - name: 🧠 Generate combined Semgrep report
@@ -65,12 +44,7 @@ jobs:
           --semgrep-backend security-reports/semgrep/backend/raw.json \
           --output security-reports/semgrep/combined_report.md
 
-<<<<<<< HEAD:.github/workflows/semgrep-report.yml
->>>>>>> 49e83b0e3e85c607539e8a07d81365e21d875f75
-      - name: ☁️ Upload reports as artifacts
-=======
       - name: ☁️ Upload combined report artifact
->>>>>>> 549e78b1c9c21502fbe2c5b2001515ae06f982ce:.github/workflows/semgrep_scan.yml
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
