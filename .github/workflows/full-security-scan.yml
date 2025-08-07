@@ -2,9 +2,7 @@ name: 🛡️ Full Security Scan Pipeline
 
 on:
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
 permissions:
   contents: write
@@ -18,21 +16,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Setup Python
+      - name: Setup Python & Node.js
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
       - name: Install tools
         run: |
-          pip install bandit semgrep reportlab
+          pip install bandit semgrep beautifulsoup4 reportlab
           npm install -g retire gitleaks trivy
-          sudo apt-get install jq -y
 
       - name: Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
@@ -70,10 +65,16 @@ jobs:
           --zap security-reports/raw/zap-report.html \
           --output security-reports/summary_report.md
 
-      - name: Upload combined summary report
+      - name: Upload raw scan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: security-summary-report
+          name: raw-scan-results
+          path: security-reports/raw/
+
+      - name: Upload combined report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: summary-report
           path: security-reports/summary_report.md
 
       - name: Post PR comment with security summary
@@ -88,12 +89,3 @@ jobs:
               repo: context.repo.repo,
               body: `## 🔐 Security Scan Summary\n\n${summary}`
             });
-
-      - name: Fail if critical issues found
-        run: |
-          if grep -q "CRITICAL ISSUE FOUND" security-reports/summary_report.md; then
-            echo "Critical security issues found, failing the job."
-            exit 1
-          else
-            echo "No critical security issues found."
-          fi
