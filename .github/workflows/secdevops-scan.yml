@@ -1,0 +1,76 @@
+name: SecDevOps Security Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep frontend scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json
+
+      - name: Run Semgrep backend scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json
+
+      - name: Upload Semgrep frontend report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-frontend-report
+          path: semgrep-frontend.json
+
+      - name: Upload Semgrep backend report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-backend-report
+          path: semgrep-backend.json
+
+      - name: Generate and post PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            function parseFindings(report) {
+              if (!report || !report.results) return [];
+              return report.results.map(f => `- ${f.check_id} in \`${f.path}\`: ${f.extra.message} (severity: ${f.extra.severity})`);
+            }
+
+            const frontendReport = JSON.parse(fs.readFileSync('semgrep-frontend.json', 'utf8'));
+            const backendReport = JSON.parse(fs.readFileSync('semgrep-backend.json', 'utf8'));
+
+            const frontendFindings = parseFindings(frontendReport);
+            const backendFindings = parseFindings(backendReport);
+
+            let commentBody = "## 🛡️ Semgrep Security Scan Results\n\n";
+
+            if (frontendFindings.length || backendFindings.length) {
+              commentBody += "### Frontend Findings\n";
+              commentBody += frontendFindings.length ? frontendFindings.join('\n') : "No issues found.\n";
+
+              commentBody += "\n### Backend Findings\n";
+              commentBody += backendFindings.length ? backendFindings.join('\n') : "No issues found.\n";
+            } else {
+              commentBody += "✅ No issues found in frontend or backend scans.";
+            }
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody,
+            });
