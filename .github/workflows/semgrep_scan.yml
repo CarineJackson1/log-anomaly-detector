@@ -50,7 +50,7 @@ jobs:
       - name: 📦 Run Semgrep backend scan
         run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json backend || true
 
-      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
+           - name: 📦 Run Semgrep frontend scan (React + TypeScript)
         run: |
           semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
           semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
