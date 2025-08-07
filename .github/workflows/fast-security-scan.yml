@@ -21,10 +21,49 @@ jobs:
         run: pip install semgrep beautifulsoup4
 
       - name: 🔍 Run Semgrep Scan
-        run: semgrep --config=p/ci --json --output=security-reports/semgrep.json . || true
+        run: |
+          mkdir -p security-reports
+          semgrep --config=p/ci --json --output=security-reports/semgrep.json . || true
 
       - name: ☁️ Upload Semgrep report
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
           path: security-reports/semgrep.json
+
+      - name: 💬 Post Semgrep summary to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'security-reports/semgrep.json';
+            if (!fs.existsSync(path)) {
+              core.warning("Semgrep report not found.");
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const results = data.results || [];
+            if (results.length === 0) {
+              body = "✅ **Semgrep found no issues.**";
+            } else {
+              body = `⚠️ **Semgrep found ${results.length} issue(s):**\n\n` +
+                results.slice(0, 10).map(r => {
+                  const file = r.path || "unknown file";
+                  const line = r.start?.line || "?";
+                  const message = r.extra?.message || "No message";
+                  const severity = r.extra?.severity || "N/A";
+                  return `- \`${file}:${line}\` — ${message} _(Severity: ${severity})_`;
+                }).join('\n') +
+                (results.length > 10 ? `\n\n...and ${results.length - 10} more.` : '');
+            }
+
+            if (context.issue.number) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🔍 Fast Semgrep Scan Report\n\n${body}`
+              });
+            } else {
+              console.log("No PR number found, skipping comment.");
+            }
