@@ -8,10 +8,15 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
 jobs:
   test-and-scan:
-    runs-on: ubuntu-latest
     name: Run Tests and Security Scans on Dependabot PR
+    runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Checkout code
@@ -102,21 +107,29 @@ jobs:
           script: |
             const fs = require('fs');
             const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 🔐 Dependabot Security Scan Summary\n\n${summary}`
-            });
+            if (context.issue.number) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🔐 Dependabot Security Scan Summary\n\n${summary}`
+              });
+            } else {
+              console.log("No PR number detected, skipping comment.");
+            }
 
       - name: 🚨 Label PR if critical issues found
         if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['security-review-needed']
-            });
+            if (context.issue.number) {
+              await github.rest.issues.addLabels({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: ['security-review-needed']
+              });
+            } else {
+              console.log("No PR number detected, skipping label.");
+            }
