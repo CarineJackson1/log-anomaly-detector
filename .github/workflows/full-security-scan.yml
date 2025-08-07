@@ -23,51 +23,68 @@ jobs:
           npm install -g retire
 
       - name: 🔎 Semgrep Frontend Scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json
 
       - name: 🔎 Semgrep Backend Scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json
 
       - name: 🔧 Bandit Python Security Scan
-        run: bandit -r backend -f json -o bandit-backend.json
+        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json
 
       - name: 🚀 Retire.js Dependency Scan
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: 🔊 OWASP ZAP Baseline Scan
+        run: |
+          docker run \
+            --rm \
+            -v $(pwd):/zap/wrk:rw \
+            -t ghcr.io/zaproxy/zap-stable \
+            zap-baseline.py \
+            -t https://secdevops-demo-frontend.onrender.com \
+            -r zap_report.html || true
+
+          mkdir -p security-reports/raw
+          mv zap_report.html security-reports/raw/zap-report.html
 
       - name: 📂 Upload scan artifacts
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-reports
           path: |
-            semgrep-frontend.json
-            semgrep-backend.json
-            bandit-backend.json
-            retire-frontend.json
+            security-reports/raw/semgrep-frontend.json
+            security-reports/raw/semgrep-backend.json
+            security-reports/raw/bandit-backend.json
+            security-reports/raw/retire-frontend.json
+            security-reports/raw/zap-report.html
 
-      - name: 📄 Generate & Post Summary
+      - name: 📄 Generate markdown summary
+        run: |
+          python .github/scripts/generate_summary.py
+
+      - name: 📈 Upload summary markdown
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary
+          path: security-reports/summary_report.md
+
+      - name: 📉 Post summary comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            function summarizeJSON(filePath, label) {
-              if (!fs.existsSync(filePath)) return `\n\u274c ${label}: Report not found.`;
-              const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-              let findings = [];
-              if (data.results) {
-                findings = data.results.map(r => `- [${r.extra?.severity || 'N/A'}] ${r.check_id || r.rule_id} in \`${r.path}\`: ${r.extra?.message || r.issue_text}`);
-              } else if (data.data) {
-                findings = data.data.map(r => `- [HIGH] ${r.component} (${r.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in ${r.file}`);
-              } else if (data.errors) {
-                findings.push(`Error parsing ${label}`);
-              }
-              return `\n### ${label}\n` + (findings.length ? findings.join('\n') : 'No issues found.');
+            function commentLink(label, path) {
+              return fs.existsSync(path)
+                ? `\n✅ ${label}: [View report artifact](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID})`
+                : `\n❌ ${label} report not found.`;
             }
 
-            const summary = `## 📈 Security Scan Summary\n` +
-              summarizeJSON('semgrep-frontend.json', 'Semgrep Frontend') +
-              summarizeJSON('semgrep-backend.json', 'Semgrep Backend') +
-              summarizeJSON('bandit-backend.json', 'Bandit Python Scan') +
-              summarizeJSON('retire-frontend.json', 'Retire.js Scan');
+            const summary = `## 📈 Security Scan Summary` +
+              commentLink('Semgrep Frontend', 'security-reports/raw/semgrep-frontend.json') +
+              commentLink('Semgrep Backend', 'security-reports/raw/semgrep-backend.json') +
+              commentLink('Bandit Backend', 'security-reports/raw/bandit-backend.json') +
+              commentLink('Retire.js', 'security-reports/raw/retire-frontend.json') +
+              commentLink('OWASP ZAP', 'security-reports/raw/zap-report.html');
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
