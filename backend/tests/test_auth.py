@@ -132,4 +132,15 @@ def test_login_nonexistent_email(test_client):
     assert response.status_code == 401
     assert json_data["message"] == "Invalid email or password"
     
+def test_login_invalid_payload(test_client):
+    payload = {
+        "password": "missingemail"
+    }
     
+    response = test_client.post("/auth/login", json=payload)
+    json_data = response.get_json()
+    print("INVALID PAYLOAD:", json_data)
+    
+    assert response.status_code == 400
+    assert json_data["message"] == "Invalid input."
+    assert "email" in json_data["details"]
