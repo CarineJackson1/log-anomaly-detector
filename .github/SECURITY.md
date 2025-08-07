@@ -1,97 +1,96 @@
-# 🔐 Security Overview
+🔐 Security Overview
 
-## 🚀 About
+🚀 About
 
-AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment, helping learners showcase verified credentials to hiring platforms.
+AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment—enabling learners to showcase verified credentials to hiring platforms.
 
 This project maintains a proactive security posture through:
-- Automated CI-based scanning
-- PR protection rules
-- Secret scanning and DAST
-- Dependency update monitoring
+	•	✅ Automated CI-based scanning (SAST, DAST, secrets, deps)
+	•	✅ Pull Request (PR) protection with branch rules
+	•	✅ Secret scanning and dynamic security testing
+	•	✅ Continuous dependency update monitoring
 
----
+⸻
 
-## 🛡 Supported Branches
+🛡️ Branch Security Coverage
 
-| Branch    | Security Coverage          |
-|-----------|----------------------------|
-| `main`    | ✅ Full scan + PR protection |
-| `develop` | ✅ Full scan + PR protection |
+Branch	Scanning Level	PR Protection
+main	✅ Full scan (SAST + DAST)	✅ Enabled
+develop	✅ Full scan (SAST only)	✅ Enabled
+All PRs	✅ Fast scan (Semgrep only)	❌ N/A
+Dependabot	✅ Full scan + labeling	✅ Conditional
 
----
 
-## 🧪 CI-Based Scanning Tools
+⸻
 
-| Tool         | Target Scope         | Purpose                                           |
-|--------------|----------------------|---------------------------------------------------|
-| Semgrep      | Frontend + Backend   | Static code analysis                              |
-| Bandit       | Python backend       | Python SAST rules                                 |
-| Retire.js    | JavaScript frontend  | Vulnerable JS libraries                           |
-| Trivy        | Codebase & container | OS and package vulnerabilities                    |
-| Gitleaks     | Whole repo           | Secrets detection                                 |
-| OWASP ZAP    | Staging frontend     | Dynamic app security testing                      |
-| Dependabot   | PR dependencies      | Auto PRs for security patches                     |
+🧪 CI-Based Security Tooling
 
-# 🔐 Security Scan Summary Reports
+Tool	Scope	Purpose
+Semgrep	Frontend + Backend	Custom static code analysis (SAST)
+Bandit	Python backend	Python-specific SAST
+Retire.js	JavaScript frontend	Detects vulnerable JS libraries
+Trivy	App files & containers	OS/package vulnerability scanning
+Gitleaks	Entire repository	Secrets/hardcoded credential detection
+OWASP ZAP	Staging frontend	Dynamic app security testing (DAST)
+Dependabot	Dependencies	Automatic PRs for vulnerable packages
 
-Our CI pipeline runs a comprehensive set of automated security scans on every pull request and push to critical branches (`main` and `develop`). These scans detect vulnerabilities, secrets, and insecure code patterns.
 
-## Tools and Coverage
+⸻
 
-| Tool        | Scope                          | Purpose                                   |
-|-------------|--------------------------------|-------------------------------------------|
-| Semgrep     | Frontend & Backend code        | Static code analysis with custom rules   |
-| Bandit      | Python backend                 | Detects Python security issues           |
-| Retire.js   | JavaScript dependencies        | Finds vulnerable JS libraries             |
-| Gitleaks    | Entire repository             | Detects hardcoded secrets                 |
-| Trivy       | Codebase & containers          | Finds OS/package vulnerabilities         |
-| OWASP ZAP   | Live frontend (staging)        | Dynamic Application Security Testing (DAST) |
+📄 Security Scan Reports
 
-## Reading the Report
+The CI pipeline produces detailed security reports on every PR and push to critical branches (main, develop), and on all Dependabot PRs.
 
-Reports are generated in Markdown and PDF formats and saved in the `security-reports/` directory. The report contains sections per tool listing detected issues.
+✅ Highlights
+	•	🔍 Scans run automatically
+	•	🟥 CI fails if critical/high issues are found
+	•	📁 Reports saved to security-reports/
+	•	💬 PR comments summarize detected issues
 
-Each issue entry includes:
+⸻
 
-- **File and line number** where the issue was detected
-- **Description** of the vulnerability or issue
-- **Severity level** (CRITICAL, HIGH, MEDIUM, LOW, INFO)
-- **Additional details** like CWE or rule IDs where available
+🧠 How to Read the Reports
 
-### Example Markdown Section:
+Reports are generated in Markdown and PDF formats and saved to:
 
-```md
+security-reports/
+├── summary_report.md
+├── summary_report.pdf
+└── raw/           # Raw JSON outputs from tools
+
+Each report section includes:
+	•	📂 File & line number of the issue
+	•	📝 Description and rule/message
+	•	⚠️ Severity (CRITICAL, HIGH, MEDIUM, LOW, INFO)
+	•	🆔 Rule ID, CWE, or category where applicable
+
+📌 Example (Markdown Snippet):
+
 ## Semgrep Backend
 - `backend/api/views.py:45` — Use of `eval()` detected (Severity: CRITICAL)
 - `backend/app.py:23` — Hardcoded credentials (Severity: HIGH)
 
 ## Bandit Backend
 - `backend/models/user.py:87` — Use of insecure function `pickle.loads` (Severity: HIGH)
-```
 
+⸻
 
-- 🛠️ Scans run on every PR
-- 🟥 CI fails on critical/high severity findings
-- 💬 PR comments summarize results
-- 📁 Reports saved to `security-reports/`
+### 🔎 Vulnerability Triage Checklist
 
----
+- [ ] Review Semgrep findings
+- [ ] Review Bandit (Python backend) issues
+- [ ] Review Trivy (OS/package scan)
+- [ ] Review Gitleaks (secrets)
+- [ ] Review Retire.js (JS libraries)
+- [ ] Review OWASP ZAP (DAST results)
+- [ ] Mark resolved vulnerabilities as mitigated or fixed
 
-## 🧠 Reading Reports
+⸻
 
-Reports contain:
-- File and line number of the issue
-- Description and severity
-- CWE, rule ID, or category
+📦 Dependency Update Strategy
 
----
-
-## 📦 Dependency Updates
-
-| Ecosystem       | Frequency | Auto-Merge | Target Branch |
-|-----------------|-----------|------------|----------------|
-| Python (pip)    | Daily     | ✅          | `develop`      |
-| Node.js (npm)   | Weekly    | ✅          | `develop`      |
-| GitHub Actions  | Weekly    | ✅          | `develop`      |
-| Docker          | Weekly    | ✅          | `develop`      |
+Ecosystem	Frequency	Auto-Merge	Target Branch
+Python (pip)	Daily	✅	develop
+Node.js (npm)	Weekly	✅	develop
+GitHub Actions	Weekly	✅	develop
+Docker	Weekly	✅	develop
