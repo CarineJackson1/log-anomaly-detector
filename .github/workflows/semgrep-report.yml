@@ -21,9 +21,11 @@ jobs:
       - name: 🕵️ Install Semgrep
         run: pip install semgrep
 
+      # ✅ BACKEND SCAN - Flask app at project root
       - name: 📦 Run Semgrep backend scan (Python)
-        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json ./backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json .
 
+      # ✅ FRONTEND SCAN - Assumes frontend/ exists and has JS/TS code
       - name: 📦 Run Semgrep frontend scan (JavaScript)
         run: semgrep --config=p/ci/javascript --json --output=security-reports/semgrep/frontend/raw.json ./frontend
 
