@@ -15,4 +15,11 @@ rules:
     message: "Potential hardcoded secret detected"
     severity: WARNING
     languages: [python]
-    pattern: $SECRET = "..."
+    pattern-either:
+      - pattern: API_KEY = "..."
+      - pattern: PASSWORD = "..."
+      - pattern: SECRET = "..."
+      - pattern: TOKEN = "..."
+      - pattern: ACCESS_TOKEN = "..."
+      - pattern: AWS_SECRET_ACCESS_KEY = "..."
+      - pattern: DB_PASSWORD = "..."
