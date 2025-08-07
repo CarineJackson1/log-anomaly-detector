@@ -5,42 +5,50 @@ import sys
 from datetime import datetime
 from bs4 import BeautifulSoup
 
+REPORT_PATHS = {
+    "bandit": "Bandit Backend",
+    "semgrep_frontend": "Semgrep Frontend",
+    "semgrep_backend": "Semgrep Backend",
+    "gitleaks": "Gitleaks",
+    "retire": "Retire.js",
+    "trivy": "Trivy",
+    "zap": "OWASP ZAP",
+}
+
 def load_json(path):
-    if not path or not os.path.isfile(path):
-        print(f"⚠️ Warning: File not found or path not provided: {path}")
+    if not os.path.isfile(path):
+        print(f"⚠️ Warning: File not found: {path}")
         return None
-    with open(path, 'r', encoding='utf-8') as f:
-        try:
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
             return json.load(f)
-        except Exception as e:
-            print(f"⚠️ Error loading JSON from {path}: {e}")
-            return None
+    except Exception as e:
+        print(f"⚠️ Error loading JSON from {path}: {e}")
+        return None
 
 def load_html(path):
-    if not path or not os.path.isfile(path):
-        print(f"⚠️ Warning: File not found or path not provided: {path}")
-        return None
+    if not os.path.isfile(path):
+        print(f"⚠️ Warning: File not found: {path}")
+        return ""
     with open(path, 'r', encoding='utf-8') as f:
         return f.read()
 
 def extract_zap_critical_issues(html_content):
-    if not html_content:
-        return []
     soup = BeautifulSoup(html_content, 'html.parser')
     issues = []
     for alertitem in soup.select('alertitem'):
         riskcode = alertitem.find('riskcode')
-        if riskcode and int(riskcode.text) >= 2:  # 2=Medium, 3=High risk
+        if riskcode and int(riskcode.text) >= 2:  # RiskCode 2=Medium, 3=High
             alertname = alertitem.find('alert').text if alertitem.find('alert') else "Unknown"
             desc = alertitem.find('desc').text if alertitem.find('desc') else ""
             issues.append(f"{alertname}: {desc}")
     return issues
 
-def summarize_semgrep(results):
-    if not results or "results" not in results:
+def summarize_semgrep(data):
+    if not data or "results" not in data:
         return ["No issues found."]
     lines = []
-    for issue in results["results"]:
+    for issue in data["results"]:
         lines.append(
             f"- `{issue.get('path','unknown')}:{issue.get('start',{}).get('line','?')}` — "
             f"{issue.get('extra', {}).get('message', 'No message')} "
@@ -85,10 +93,16 @@ def summarize_trivy(data):
     return lines or ["No issues found."]
 
 def summarize_zap(path):
-    if not path or not os.path.isfile(path):
+    if not os.path.isfile(path):
         return ["No issues found."]
-    # For simplicity, just link to the HTML report
-    return [f"ZAP report available: `{path}`"]
+    # Extract critical issues from ZAP HTML report
+    html_content = load_html(path)
+    issues = extract_zap_critical_issues(html_content)
+    if issues:
+        lines = [f"- {issue}" for issue in issues]
+    else:
+        lines = ["✅ No OWASP ZAP critical alerts found."]
+    return lines
 
 def contains_critical(data, tool):
     if not data:
@@ -111,55 +125,44 @@ def contains_critical(data, tool):
                 if v.get("Severity", "").upper() in ["CRITICAL", "HIGH"]:
                     return True
     elif tool == "zap":
-        return os.path.isfile(data)
+        # If file exists and issues found
+        return os.path.isfile(data) and len(extract_zap_critical_issues(load_html(data))) > 0
     return False
 
 def main():
     parser = argparse.ArgumentParser(description="Generate combined security report from multiple tool JSON outputs.")
     parser.add_argument("--bandit", help="Path to bandit JSON report")
-    parser.add_argument("--semgrep-frontend", help="Path to semgrep frontend JSON report")
+    parser.add_argument("--semgrep-frontend-react", help="Path to semgrep React frontend JSON report")
+    parser.add_argument("--semgrep-frontend-ts", help="Path to semgrep TypeScript frontend JSON report")
     parser.add_argument("--semgrep-backend", help="Path to semgrep backend JSON report")
     parser.add_argument("--gitleaks", help="Path to gitleaks JSON report")
-    parser.add_argument("--retire", help="Path to retire JSON report")
+    parser.add_argument("--retire", help="Path to retire.js JSON report")
     parser.add_argument("--trivy", help="Path to trivy JSON report")
-    parser.add_argument("--zap", help="Path to ZAP HTML report")
+    parser.add_argument("--zap", help="Path to zap HTML report")
     parser.add_argument("--output", required=True, help="Output markdown report path")
     args = parser.parse_args()
+
+    tool_data = {}
+
+    tool_data["bandit"] = load_json(args.bandit) if args.bandit else None
+
+    semgrep_front_react = load_json(args.semgrep_frontend_react) if args.semgrep_frontend_react else {"results": []}
+    semgrep_front_ts = load_json(args.semgrep_frontend_ts) if args.semgrep_frontend_ts else {"results": []}
+    combined_frontend = {"results": semgrep_front_react.get("results", []) + semgrep_front_ts.get("results", [])}
+    tool_data["semgrep_frontend"] = combined_frontend
+
+    tool_data["semgrep_backend"] = load_json(args.semgrep_backend) if args.semgrep_backend else None
+    tool_data["gitleaks"] = load_json(args.gitleaks) if args.gitleaks else None
+    tool_data["retire"] = load_json(args.retire) if args.retire else None
+    tool_data["trivy"] = load_json(args.trivy) if args.trivy else None
+    tool_data["zap"] = args.zap  # Path to HTML file
 
     report_md = f"# 🔒 Security Scan Summary\n\nScan time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     critical_found = False
 
-    tool_data = {}
-
-    # Load all JSON inputs where provided
-    tools = {
-        "bandit": args.bandit,
-        "semgrep_frontend": args.semgrep_frontend,
-        "semgrep_backend": args.semgrep_backend,
-        "gitleaks": args.gitleaks,
-        "retire": args.retire,
-        "trivy": args.trivy,
-        "zap": args.zap,
-    }
-
-    for tool, path in tools.items():
-        if tool == "zap":
-            tool_data[tool] = path if path and os.path.isfile(path) else None
-        else:
-            tool_data[tool] = load_json(path)
-
-    # Generate summaries per tool
-    for tool, display_name in {
-        "semgrep_frontend": "Semgrep Frontend",
-        "semgrep_backend": "Semgrep Backend",
-        "bandit": "Bandit Backend",
-        "gitleaks": "Gitleaks",
-        "retire": "Retire.js",
-        "trivy": "Trivy",
-        "zap": "OWASP ZAP",
-    }.items():
+    for tool, display_name in REPORT_PATHS.items():
         data = tool_data.get(tool)
-        if tool in ["semgrep_frontend", "semgrep_backend"]:
+        if tool == "semgrep_frontend" or tool == "semgrep_backend":
             lines = summarize_semgrep(data)
         elif tool == "bandit":
             lines = summarize_bandit(data)
@@ -180,13 +183,10 @@ def main():
         if contains_critical(data, tool):
             critical_found = True
 
-    # Write the combined markdown report
-    output_path = args.output
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(args.output, "w", encoding="utf-8") as f:
         f.write(report_md)
 
-    print(f"✅ Report written to {output_path}")
+    print(f"✅ Report written to {args.output}")
 
     if critical_found:
         print("❌ Critical or high severity issues found, failing CI.")
