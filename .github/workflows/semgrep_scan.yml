@@ -34,6 +34,9 @@ jobs:
           semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src || true
           semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src || true
 
+      - name: Ensure report directory exists
+        run: mkdir -p security-reports/semgrep
+
       - name: 🧠 Generate combined Semgrep report
         run: python .github/scripts/generate_full_report.py \
           --semgrep-frontend security-reports/semgrep/frontend/react.json \
