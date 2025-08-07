@@ -1,50 +1,76 @@
-# AstroSkill LMS Connector
+#Security
 
-[![🛡 Semgrep Security Scan](https://github.com/AstroSkill/astroskill-lms-connector/actions/workflows/semgrep.yml/badge.svg)](https://github.com/AstroSkill/astroskill-lms-connector/actions/workflows/semgrep.yml)
-[![🆘 CodeQL](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/codeql.yml/badge.svg)](https://github.com/AstroSkill/astroskill-lms-connector-carine/actions/workflows/codeql.yml)
-[![🤖 Dependabot Updates](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)](https://github.com/AstroSkill/astroskill-lms-connector/network/updates)
-[![🚨 Security Policy](https://img.shields.io/badge/Security-Policy-blue?logo=github)](./SECURITY.md)
+⸻
 
-## 🚀 Overview
-AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment...
+🚀 Overview
+
+AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment…
+
+⸻
+
+🔐 Security Policy
+
+🛡 Supported Branches
+
+Branch	Security Coverage
+main	✅ Full Scan & PR Protection
+develop	✅ Full Scan & PR Protection
 
 
-# 🔐 Security Policy
+⸻
 
-## 🛡 Supported Branches
-| Branch  | Supported |
-|---------|-----------|
-| main    | ✅        |
-| develop | ✅        |
+🐞 Reporting a Vulnerability
 
----
+If you discover a security issue, please do not open a public GitHub issue.
+Instead, report privately to the project maintainers:
+	•	Lead Security Reviewer: @CarineJackson1
+	•	Security Reviewer: @sajanamhr21
 
-## 🐞 Reporting a Vulnerability
-If you find a security issue, please **do not open a public GitHub Issue**.  
-Instead, contact the security team directly:
+Expected response time: within 48 hours
 
-- **Lead Security Reviewer:** [@CarineJackson1](https://github.com/CarineJackson1)
-- **Security Reviewer:** [@sajanamhr21](https://github.com/sajanamhr21)
+⸻
 
-We aim to respond within **48 hours**.
+🧪 CI-Based Security Scanning
 
----
+AstroSkill LMS integrates automated security testing via GitHub Actions:
 
-## 📊 Security Scans
-- **CodeQL**: [View Results](https://github.com/CarineJackson1/astroskill-lms-connector-carine/security/code-scanning)
-- **Snyk (via GitHub Actions)**: [View Results](https://github.com/CarineJackson1/astroskill-lms-connector-carine/actions/workflows/snyk.yml)
+Tool	Scan Target	Output
+Semgrep	Frontend + Backend	SAST, custom rule checks
+Bandit	Python backend	Common Python security issues
+Retire.js	JS dependencies	Known vulnerable libraries
+OWASP ZAP	Live frontend (staging)	Dynamic Application Security Testing (DAST)
+Dependabot PR CI	Any PR from Dependabot	Runs tests + security checks
 
----
+✅ PRs auto-fail on critical security violations
+📄 Results summarized and posted as PR comments
+📂 Artifacts stored for audit in security-reports/
 
-## 🔄 Automated Dependency Updates
-We use [Dependabot](https://docs.github.com/en/code-security/dependabot) to keep dependencies secure and up-to-date.  
-Security PRs are:
-- Reviewed by: `@CarineJackson1`, `@sajanamhr21`
-- Auto-merged if tests pass
+⸻
 
----
+📦 Dependency Updates (via Dependabot)
 
-## 🛠 Security Best Practices
-- All PRs must pass **CodeQL** and **Snyk** scans before merging
-- Sensitive credentials are stored in **GitHub Actions Secrets**
-- Branch protection is enabled on `main` and `develop`
+All package ecosystems are monitored for security updates:
+
+Ecosystem	Frequency	Auto-Merge	Branch
+Python (pip)	Daily	✅	develop
+Node.js (npm)	Weekly	✅	develop
+GitHub Actions	Weekly	✅	develop
+Docker	Weekly	✅	develop
+
+PRs are:
+	•	Auto-assigned to @CarineJackson1, @sajanamhr21
+	•	Auto-labeled with dependencies, auto-merge
+	•	Merged if tests + scans pass
+
+⸻
+
+🛡 Security Enforcement & Best Practices
+	•	✅ Security Scans are run on every PR via GitHub Actions
+	•	✅ Credentials and API keys are managed via GitHub Secrets
+	•	✅ Branch protection is enabled on main and develop
+	•	✅ Security reports are uploaded for audit trails
+	•	✅ Auto-summary comments are generated on PRs for transparency
+
+⸻
+
+Would you also like a security dashboard badge using a summary_report.md parser? I can help you generate one and pin it to the top of your repo or docs.
