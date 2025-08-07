@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -66,18 +67,38 @@ def generate_report():
     styles = getSampleStyleSheet()
     story = [Paragraph("🔒 Security Scan Summary", styles["Title"]), Spacer(1, 12)]
 
+    critical_found = False
+
     for title, path in REPORT_PATHS.items():
         data = load_json(path)
         if "Semgrep" in title:
             lines = summarize_semgrep(data)
+            # Check for critical Semgrep issues
+            if data and "results" in data:
+                for issue in data["results"]:
+                    severity = issue.get("extra", {}).get("severity", "").upper()
+                    if severity == "CRITICAL":
+                        critical_found = True
         elif "Bandit" in title:
             lines = summarize_bandit(data)
+            # Check Bandit critical severity (example)
+            if data and "results" in data:
+                for issue in data["results"]:
+                    if issue.get("issue_severity", "").upper() == "HIGH":  # or CRITICAL if Bandit supports
+                        critical_found = True
         elif "Gitleaks" in title:
             lines = summarize_gitleaks(data)
+            if data and "findings" in data and len(data["findings"]) > 0:
+                critical_found = True  # any secret is critical
         elif "Retire" in title:
             lines = summarize_retire(data)
         elif "Trivy" in title:
             lines = summarize_trivy(data)
+            if data and "Results" in data:
+                for r in data["Results"]:
+                    for v in r.get("Vulnerabilities", []):
+                        if v.get("Severity", "").upper() in ["CRITICAL", "HIGH"]:
+                            critical_found = True
         else:
             lines = ["No summary function defined."]
 
@@ -94,6 +115,13 @@ def generate_report():
     doc = SimpleDocTemplate(OUTPUT_PDF, pagesize=letter)
     doc.build(story)
     print(f"✅ Reports generated: {OUTPUT_MD}, {OUTPUT_PDF}")
+
+    if critical_found:
+        print("❌ Critical issues found! Failing build.")
+        sys.exit(1)
+    else:
+        print("✅ No critical issues found.")
+        sys.exit(0)
 
 if __name__ == "__main__":
     generate_report()
