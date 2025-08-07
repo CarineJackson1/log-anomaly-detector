@@ -8,21 +8,16 @@ on:
     paths-ignore:
       - '**.md'
 
-permissions:
-  contents: read
-  pull-requests: write
-  checks: write
-
 jobs:
   test-and-scan:
-    name: Run Tests and Security Scans on Dependabot PR
     runs-on: ubuntu-latest
+    name: Run Tests and Full Security Scans on Dependabot PR
 
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python 3.x
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -107,29 +102,21 @@ jobs:
           script: |
             const fs = require('fs');
             const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
-            if (context.issue.number) {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## 🔐 Dependabot Security Scan Summary\n\n${summary}`
-              });
-            } else {
-              console.log("No PR number detected, skipping comment.");
-            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Dependabot Security Scan Summary\n\n${summary}`
+            });
 
       - name: 🚨 Label PR if critical issues found
         if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            if (context.issue.number) {
-              await github.rest.issues.addLabels({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: ['security-review-needed']
-              });
-            } else {
-              console.log("No PR number detected, skipping label.");
-            }
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
