@@ -18,8 +18,9 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: 🕵️ Install Semgrep
-        run: pip install semgrep
+      - name: 🕵️ Install Python dependencies
+        run: |
+          pip install semgrep beautifulsoup4
 
       - name: 🔍 Debug files being scanned
         run: |
