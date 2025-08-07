@@ -112,7 +112,7 @@ def contains_critical(data, tool):
     elif tool == "trivy":
         return any(v.get("Severity", "").upper() in ["CRITICAL", "HIGH"] for r in data.get("Results", []) for v in r.get("Vulnerabilities", []))
     elif tool == "zap":
-        return path and os.path.isfile(path) and len(extract_zap_critical_issues(load_html(path))) > 0
+        return data and os.path.isfile(data) and len(extract_zap_critical_issues(load_html(data))) > 0
     return False
 
 def generate_pdf(md_text, pdf_path):
@@ -139,7 +139,6 @@ def main():
     parser.add_argument("--output", required=True, help="Output markdown report path")
     args = parser.parse_args()
 
-    # Merge frontend semgrep results
     semgrep_front_react = load_json(args.semgrep_frontend_react) if args.semgrep_frontend_react else {"results": []}
     semgrep_front_ts = load_json(args.semgrep_frontend_ts) if args.semgrep_frontend_ts else {"results": []}
     combined_frontend = {"results": semgrep_front_react.get("results", []) + semgrep_front_ts.get("results", [])}
