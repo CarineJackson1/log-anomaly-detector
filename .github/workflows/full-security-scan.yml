@@ -1,237 +1,91 @@
-Got it! Here’s a full merged GitHub Actions workflow that integrates your ESLint security scan with your existing full security scan pipeline including Bandit, Semgrep (frontend & backend), Retire.js, Gitleaks, and Trivy. It runs scans in parallel with a matrix, uploads artifacts, and posts a unified security summary comment on your PR.
-
 name: 🛡️ Full Security Scan Pipeline
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: write  # Needed for pushing updated summary report
 
 jobs:
   security-scans:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        scanner: [bandit, semgrep-frontend, semgrep-backend, retire, gitleaks, trivy, eslint]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Setup Node.js for frontend-related scans (ESLint, Retire.js, Semgrep frontend)
-      - name: Setup Node.js
-        if: matrix.scanner == 'eslint' || matrix.scanner == 'retire' || matrix.scanner == 'semgrep-frontend'
+      - name: Setup Node.js (for frontend & retire.js)
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Setup Python for backend scans (Bandit, Semgrep backend)
       - name: Setup Python
-        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend'
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      # Install dependencies for Retire.js
-      - name: Install Retire.js
-        if: matrix.scanner == 'retire'
-        run: npm install -g retire
-
-      # Install dependencies for ESLint
-      - name: Install frontend dependencies
-        if: matrix.scanner == 'eslint'
+      - name: Install dependencies
         run: |
-          cd frontend
-          npm ci
+          npm install -g retire
+          pip install semgrep bandit
 
-      # Install Semgrep and Bandit
-      - name: Install Semgrep and Bandit
-        if: matrix.scanner == 'bandit' || matrix.scanner == 'semgrep-backend' || matrix.scanner == 'semgrep-frontend'
-        run: pip install semgrep bandit
-
-      # Run Bandit scan
       - name: Run Bandit Scan
-        if: matrix.scanner == 'bandit'
         run: bandit -r backend -f json -o bandit-report.json
 
-      # Run Semgrep frontend scan
       - name: Run Semgrep Frontend Scan
-        if: matrix.scanner == 'semgrep-frontend'
         run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json || true
 
-      # Run Semgrep backend scan
       - name: Run Semgrep Backend Scan
-        if: matrix.scanner == 'semgrep-backend'
         run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
 
-      # Run Retire.js scan
       - name: Run Retire.js Scan
-        if: matrix.scanner == 'retire'
         run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
 
-      # Run Gitleaks scan
       - name: Run Gitleaks Scan
-        if: matrix.scanner == 'gitleaks'
         uses: zricethezav/gitleaks-action@v2
         with:
           args: --redact --report-path=gitleaks-report.json || true
 
-      # Run Trivy container scan
       - name: Run Trivy Scan (Docker image)
-        if: matrix.scanner == 'trivy'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: your-image-name:latest
           format: json
           output: trivy-report.json
 
-      # Run ESLint scan
-      - name: Run ESLint Security Scan
-        if: matrix.scanner == 'eslint'
+      - name: Run OWASP ZAP Baseline Scan
         run: |
-          cd frontend
-          npx eslint . --format json -o eslint-report.json || true
-
-      # Upload scan artifacts
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'bandit'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bandit-report
-          path: bandit-report.json
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
+            -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
+          mkdir -p security-reports/raw
+          mv zap-report.html security-reports/raw/zap-report.html
 
       - name: Upload scan artifacts
-        if: matrix.scanner == 'semgrep-frontend'
         uses: actions/upload-artifact@v4
         with:
-          name: semgrep-frontend-report
-          path: semgrep-frontend.json
+          name: security-scan-reports
+          path: |
+            bandit-report.json
+            semgrep-frontend.json
+            semgrep-backend.json
+            retire-frontend.json
+            gitleaks-report.json
+            trivy-report.json
+            security-reports/raw/zap-report.html
 
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'semgrep-backend'
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-backend-report
-          path: semgrep-backend.json
+      - name: Generate security summary report
+        run: python3 scripts/generate_report.py
 
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'retire'
-        uses: actions/upload-artifact@v4
-        with:
-          name: retire-frontend-report
-          path: retire-frontend.json
-
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'gitleaks'
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-report
-          path: gitleaks-report.json
-
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'trivy'
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: trivy-report.json
-
-      - name: Upload scan artifacts
-        if: matrix.scanner == 'eslint'
-        uses: actions/upload-artifact@v4
-        with:
-          name: eslint-report
-          path: frontend/eslint-report.json
-
-  post-summary:
-    needs: security-scans
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Download all scan reports
-        uses: actions/download-artifact@v3
-        with:
-          name: bandit-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-frontend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-backend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: retire-frontend-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: gitleaks-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: trivy-report
-          path: security-reports/
-      - uses: actions/download-artifact@v3
-        with:
-          name: eslint-report
-          path: security-reports/
-
-      - name: Generate and post summary comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-
-            function parseSemgrep(data) {
-              if (!data.results) return [];
-              return data.results.map(r => `- [${r.extra?.severity || 'N/A'}] \`${r.check_id || r.rule_id}\` in \`${r.path}\`: ${r.extra?.message || r.message || r.issue_text}`);
-            }
-
-            function parseBandit(data) {
-              if (!data.results) return [];
-              return data.results.map(r => `- [${r.issue_severity || 'N/A'}] \`${r.test_id || 'bandit'}\` in \`${r.filename}\`: ${r.issue_text}`);
-            }
-
-            function parseRetire(data) {
-              if (!data.data) return [];
-              return data.data.map(r => `- [HIGH] \`${r.component}\` (${r.vulnerabilities?.[0]?.identifiers?.summary || 'vuln'}) in \`${r.file}\``);
-            }
-
-            function parseGitleaks(data) {
-              if (!data.findings) return [];
-              return data.findings.map(r => `- [SECRET] \`${r.description}\` in \`${r.file}\``);
-            }
-
-            function parseTrivy(data) {
-              if (!data.Results) return [];
-              let vulns = [];
-              for (const res of data.Results) {
-                if (res.Vulnerabilities) {
-                  for (const vuln of res.Vulnerabilities) {
-                    vulns.push(`- [${vuln.Severity}] \`${vuln.VulnerabilityID}\` in \`${res.Target}\`: ${vuln.Title}`);
-                  }
-                }
-              }
-              return vulns;
-            }
-
-            function parseESLint(data) {
-              if (!Array.isArray(data)) return [];
-              return data.map(issue => {
-                const messages = issue.messages.map(m => `  - [${m.severity === 2 ? 'ERROR' : 'WARNING'}] ${m.ruleId || 'unknown'}: ${m.message}`).join('\n');
-                return `- \`${issue.filePath}\`:\n${messages}`;
-              });
-            }
-
-            function loadJSON(filePath) {
-              if (!fs.existsSync(filePath)) return null;
-              return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            }
-
-            const bandit = loadJSON('security-reports/bandit-report.json') || {};
-            const semgrepFrontend = loadJSON('security-reports/semgrep-frontend.json') || {};
-            const semgrepBackend = loadJSON('security-reports/semgrep-backend.json') || {};
-            const retire = loadJSON('security-reports/retire-frontend.json') || {};
-            const gitleaks = loadJSON('security-reports/gitleaks-report.json') || {};
-            const trivy = loadJSON('security-reports/trivy-report.json
+      - name: Commit and push security summary report
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if git diff --quiet security-reports/summary_report.md; then
+            echo "No changes in summary report to commit."
+          else
+            git add security-reports/summary_report.md
+            git commit -m "✨ Update security summary report [skip ci]"
+            git push
+          fi
