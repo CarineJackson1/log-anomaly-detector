@@ -21,20 +21,29 @@ jobs:
       - name: 🕵️ Install Semgrep
         run: pip install semgrep
 
-      # ✅ BACKEND SCAN - Flask app at project root
+      # Backend scan at project root
       - name: 📦 Run Semgrep backend scan (Python)
         run: semgrep --config=p/ci/python --json --output=security-reports/semgrep/backend/raw.json .
 
-      # ✅ FRONTEND SCAN - Assumes frontend/ exists and has JS/TS code
-      - name: 📦 Run Semgrep frontend scan (JavaScript)
-        run: semgrep --config=p/ci/javascript --json --output=security-reports/semgrep/frontend/raw.json ./frontend
+      # Frontend scan with React + TypeScript rules on frontend/src
+      - name: 📦 Run Semgrep frontend scan (React + TypeScript)
+        run: |
+          semgrep --config=p/react --json --output=security-reports/semgrep/frontend/react.json ./frontend/src
+          semgrep --config=p/typescript --json --output=security-reports/semgrep/frontend/ts.json ./frontend/src
 
+      # Generate backend report and fail on ERROR issues
       - name: 🧠 Generate backend report
         run: python scripts/generate_semgrep_report.py security-reports/semgrep/backend/raw.json
 
-      - name: 🧠 Generate frontend report
-        run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/raw.json
+      # Generate frontend React report and fail on ERROR issues
+      - name: 🧠 Generate frontend React report
+        run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/react.json
 
+      # Generate frontend TypeScript report and fail on ERROR issues
+      - name: 🧠 Generate frontend TypeScript report
+        run: python scripts/generate_semgrep_report.py security-reports/semgrep/frontend/ts.json
+
+      # Upload all reports as artifacts
       - name: ☁️ Upload reports as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -42,3 +51,5 @@ jobs:
           path: |
             security-reports/semgrep/backend/report.md
             security-reports/semgrep/frontend/report.md
+            security-reports/semgrep/frontend/report-react.md
+            security-reports/semgrep/frontend/report-ts.md
