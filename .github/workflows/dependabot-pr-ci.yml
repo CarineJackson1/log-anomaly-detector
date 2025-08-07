@@ -35,35 +35,35 @@ jobs:
       - name: ✅ Run backend tests
         run: |
           cd backend
-          pytest || exit 0
+          pytest
 
       - name: ✅ Run frontend tests
         run: |
           cd frontend
-          npm test -- --watchAll=false || exit 0
+          npm test -- --watchAll=false
 
       - name: 🔐 Install security tools
         run: |
-          pip install semgrep bandit reportlab
+          pip install semgrep bandit reportlab beautifulsoup4
           npm install -g gitleaks retire trivy
 
       - name: 🕵️ Run Semgrep Frontend Scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json || true
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json
 
       - name: 🕵️ Run Semgrep Backend Scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json
 
       - name: 🔍 Run Bandit Backend Scan
-        run: bandit -r backend -f json -o bandit-report.json || true
+        run: bandit -r backend -f json -o bandit-report.json
 
       - name: 🔐 Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
 
       - name: 🧱 Run Retire.js Scan
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json
 
       - name: 🐳 Run Trivy Scan (filesystem)
-        run: trivy fs --format json --output trivy-report.json . || true
+        run: trivy fs --format json --output trivy-report.json .
 
       - name: 📄 Organize reports
         run: |
@@ -72,6 +72,7 @@ jobs:
 
       - name: 🧠 Generate summary report (MD + PDF)
         run: python scripts/generate_report.py
+        # This script should exit non-zero if critical/high severity issues found
 
       - name: ☁️ Upload reports
         uses: actions/upload-artifact@v4
