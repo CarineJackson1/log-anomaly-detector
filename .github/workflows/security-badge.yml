@@ -1,0 +1,63 @@
+name: 🔹 Generate Dynamic Security Badge
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  generate-badge:
+    name: 🔹 Build Badge from Summary Report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📆 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: ⚡️ Read and parse security summary
+        id: parse
+        run: |
+          SUMMARY_FILE="security-reports/summary_report.md"
+
+          if [[ ! -f "$SUMMARY_FILE" ]]; then
+            echo "Security summary report not found!"
+            echo "badge_color=red" >> $GITHUB_OUTPUT
+            echo "label=missing" >> $GITHUB_OUTPUT
+            echo "message=No+Report" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          HIGH_COUNT=$(grep -ic 'severity: high' "$SUMMARY_FILE")
+          if [[ $HIGH_COUNT -gt 0 ]]; then
+            COLOR="red"
+            MESSAGE="$HIGH_COUNT+High+Issues"
+          else
+            COLOR="brightgreen"
+            MESSAGE="No+High+Issues"
+          fi
+
+          echo "badge_color=$COLOR" >> $GITHUB_OUTPUT
+          echo "label=security" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: 🌊 Create Shields.io dynamic badge JSON
+        run: |
+          mkdir -p .github/badges
+          cat <<EOF > .github/badges/security-badge.json
+          {
+            "schemaVersion": 1,
+            "label": "${{ steps.parse.outputs.label }}",
+            "message": "${{ steps.parse.outputs.message }}",
+            "color": "${{ steps.parse.outputs.badge_color }}"
+          }
+          EOF
+
+      - name: 📁 Commit & Push badge JSON
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add .github/badges/security-badge.json
+          git commit -m "✨ Update dynamic security badge" || echo "No changes to commit"
+          git push
