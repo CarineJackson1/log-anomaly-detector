@@ -1,54 +1,59 @@
-# 🔐 Security
+# 🔐 Security Overview
 
----
-
-## 🚀 Overview
+## 🚀 About
 
 AstroSkill Connector bridges the gap between Moodle course completion and employer recruitment, helping learners showcase verified credentials to hiring platforms.
 
-This project maintains a proactive security posture by integrating automated CI-based scanning, PR protection rules, and clear reporting processes.
+This project maintains a proactive security posture through:
+- Automated CI-based scanning
+- PR protection rules
+- Secret scanning and DAST
+- Dependency update monitoring
 
 ---
 
 ## 🛡 Supported Branches
 
-| Branch   | Security Coverage                  |
-|----------|------------------------------------|
-| `main`   | ✅ Full scan + PR protection        |
-| `develop`| ✅ Full scan + PR protection        |
+| Branch    | Security Coverage          |
+|-----------|----------------------------|
+| `main`    | ✅ Full scan + PR protection |
+| `develop` | ✅ Full scan + PR protection |
 
 ---
 
-## 🧪 CI-Based Security Scanning
+## 🧪 CI-Based Scanning Tools
 
-AstroSkill LMS uses **GitHub Actions** to automatically scan for vulnerabilities on every pull request.
+| Tool         | Target Scope         | Purpose                                           |
+|--------------|----------------------|---------------------------------------------------|
+| Semgrep      | Frontend + Backend   | Static code analysis                              |
+| Bandit       | Python backend       | Python SAST rules                                 |
+| Retire.js    | JavaScript frontend  | Vulnerable JS libraries                           |
+| Trivy        | Codebase & container | OS and package vulnerabilities                    |
+| Gitleaks     | Whole repo           | Secrets detection                                 |
+| OWASP ZAP    | Staging frontend     | Dynamic app security testing                      |
+| Dependabot   | PR dependencies      | Auto PRs for security patches                     |
 
-| Tool         | Target Scope         | Purpose                                         |
-|--------------|----------------------|-------------------------------------------------|
-| **Semgrep**  | Frontend + Backend   | Static code analysis using custom and open rules |
-| **Bandit**   | Python backend       | Detects insecure code patterns in Python         |
-| **Retire.js**| JavaScript frontend  | Finds vulnerable JS libraries in use             |
-| **Trivy**    | Codebase & container | Finds OS/package-level vulnerabilities           |
-| **Gitleaks** | Entire repo          | Detects hardcoded secrets                        |
-| **OWASP ZAP**| Live staging URL     | Dynamic app security testing (DAST)              |
-| **Dependabot** | PRs for dependencies | Ensures secure versions for packages            |
-
-- ✅ **CI auto-fails** for **CRITICAL or HIGH** severity issues  
-- 📄 Security summary is **posted automatically as a PR comment**  
-- 🧾 Reports saved to `security-reports/` as **Markdown, PDF, and raw JSON**
+- 🛠️ Scans run on every PR
+- 🟥 CI fails on critical/high severity findings
+- 💬 PR comments summarize results
+- 📁 Reports saved to `security-reports/`
 
 ---
 
-## 🧠 How to Read Reports
+## 🧠 Reading Reports
 
-Reports include:
-- Vulnerability file/line location
+Reports contain:
+- File and line number of the issue
 - Description and severity
-- CWE or rule ID (if available)
+- CWE, rule ID, or category
 
-### Example (Markdown):
+---
 
-```md
-### Semgrep Backend
-- `backend/api/views.py:45` — Insecure use of `eval` (Severity: CRITICAL)
-- `backend/app.py:23` — Hardcoded credentials (Severity: HIGH)
+## 📦 Dependency Updates
+
+| Ecosystem       | Frequency | Auto-Merge | Target Branch |
+|-----------------|-----------|------------|----------------|
+| Python (pip)    | Daily     | ✅          | `develop`      |
+| Node.js (npm)   | Weekly    | ✅          | `develop`      |
+| GitHub Actions  | Weekly    | ✅          | `develop`      |
+| Docker          | Weekly    | ✅          | `develop`      |
