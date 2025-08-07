@@ -2,7 +2,9 @@ name: 🛡️ Full Security Scan Pipeline
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
 
 permissions:
   contents: write
@@ -29,7 +31,8 @@ jobs:
       - name: Install tools
         run: |
           pip install bandit semgrep reportlab
-          npm install -g retire
+          npm install -g retire gitleaks trivy
+          sudo apt-get install jq -y
 
       - name: Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
@@ -44,45 +47,36 @@ jobs:
         run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
       - name: Run Gitleaks scan
-        uses: zricethezav/gitleaks-action@v2
-        with:
-          args: --redact --report-path=security-reports/raw/gitleaks-report.json
-          fail-on-error: false
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
 
       - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: your-image-name:latest
-          format: json
-          output: security-reports/raw/trivy-report.json
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
 
-      - name: Upload raw scan artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: raw-scan-results
-          path: security-reports/raw/
-
-      - name: Generate combined summary report
-        run: python scripts/generate_report.py
-
-      - name: Upload combined report artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: summary-report
-          path: |
-            security-reports/summary_report.md
-            security-reports/summary_report.pdf
-
-      - name: Fail if critical issues found
+      - name: Run OWASP ZAP Baseline Scan
         run: |
-          if grep -qi "CRITICAL" security-reports/summary_report.md; then
-            echo "Critical issues found! Failing the job."
-            exit 1
-          else
-            echo "No critical issues found."
-          fi
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
+            -t https://your-app-url.com -r zap-report.html || true
+          mkdir -p security-reports/raw
+          mv zap-report.html security-reports/raw/zap-report.html
 
-      - name: Comment report on PR
+      - name: Generate combined security report
+        run: python .github/scripts/generate_full_report.py \
+          --bandit security-reports/raw/bandit-report.json \
+          --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+          --semgrep-backend security-reports/raw/semgrep-backend.json \
+          --gitleaks security-reports/raw/gitleaks-report.json \
+          --retire security-reports/raw/retire-frontend.json \
+          --trivy security-reports/raw/trivy-report.json \
+          --zap security-reports/raw/zap-report.html \
+          --output security-reports/summary_report.md
+
+      - name: Upload combined summary report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary-report
+          path: security-reports/summary_report.md
+
+      - name: Post PR comment with security summary
         uses: actions/github-script@v7
         with:
           script: |
@@ -94,3 +88,12 @@ jobs:
               repo: context.repo.repo,
               body: `## 🔐 Security Scan Summary\n\n${summary}`
             });
+
+      - name: Fail if critical issues found
+        run: |
+          if grep -q "CRITICAL ISSUE FOUND" security-reports/summary_report.md; then
+            echo "Critical security issues found, failing the job."
+            exit 1
+          else
+            echo "No critical security issues found."
+          fi
