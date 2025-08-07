@@ -1,7 +1,8 @@
 version: 2
 updates:
+  # Backend Python dependencies
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/backend"
     schedule:
       interval: "daily"
     labels:
@@ -22,14 +23,15 @@ updates:
     target-branch: develop
     rebase-strategy: auto
 
+  # Frontend npm dependencies
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
       - "auto-merge"
+      - "dependencies"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
@@ -45,14 +47,15 @@ updates:
     target-branch: develop
     rebase-strategy: auto
 
+  # GitHub Actions workflows (usually at repo root)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
     labels:
-      - "dependencies"
       - "auto-merge"
+      - "dependencies"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
@@ -67,14 +70,15 @@ updates:
     target-branch: develop
     rebase-strategy: auto
 
+  # Docker image updates (if you have Dockerfiles in root or backend)
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/backend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
     labels:
-      - "dependencies"
       - "auto-merge"
+      - "dependencies"
     reviewers:
       - "CarineJackson1"
       - "sajanamhr21"
