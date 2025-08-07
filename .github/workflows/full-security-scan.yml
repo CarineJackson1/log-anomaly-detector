@@ -1,0 +1,111 @@
+name: 🛡️ Full Security Scan Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  security-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install tools
+        run: |
+          pip install bandit semgrep
+          npm install -g retire
+          sudo apt-get install jq -y
+
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json || true
+
+      - name: Run Semgrep frontend scan
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
+
+      - name: Run Semgrep backend scan
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
+
+      - name: Run Retire.js scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: Run Gitleaks scan
+        uses: zricethezav/gitleaks-action@v2
+        with:
+          args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: your-image-name:latest
+          format: json
+          output: security-reports/raw/trivy-report.json
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
+            -t https://your-app-url.com -r zap-report.html || true
+          mkdir -p security-reports/raw
+          mv zap-report.html security-reports/raw/zap-report.html
+
+      - name: Upload all raw scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-raw
+          path: security-reports/raw/
+
+      - name: Generate combined security summary report
+        run: python scripts/generate_full_report.py \
+          --bandit security-reports/raw/bandit-backend.json \
+          --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+          --semgrep-backend security-reports/raw/semgrep-backend.json \
+          --retire security-reports/raw/retire-frontend.json \
+          --gitleaks security-reports/raw/gitleaks-report.json \
+          --trivy security-reports/raw/trivy-report.json \
+          --zap security-reports/raw/zap-report.html \
+          --output security-reports/summary_report.md
+
+      - name: Upload combined summary report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary-report
+          path: security-reports/summary_report.md
+
+      - name: Fail if critical issues found
+        run: |
+          if grep -q "CRITICAL ISSUE FOUND" security-reports/summary_report.md; then
+            echo "Critical security issues found, failing the job."
+            exit 1
+          else
+            echo "No critical security issues found."
+          fi
+
+      - name: Create PR comment with security summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Security Scan Summary\n\n${summary}`
+            });
