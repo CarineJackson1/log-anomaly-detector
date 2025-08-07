@@ -11,9 +11,8 @@
           # Move ZAP report to a consistent location
           mkdir -p security-reports/raw
           mv zap_report.html security-reports/raw/zap-report.html
-
-      - name: 📤 Upload ZAP Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report
-          path: security-reports/raw/zap-report.html
+- name: 📤 Upload ZAP Report
+  uses: actions/upload-artifact@v4
+  with:
+    name: zap-report
+    path: security-reports/raw/zap-report.html
