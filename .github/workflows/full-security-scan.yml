@@ -7,22 +7,21 @@ on:
       - develop
 
 permissions:
-  contents: write  # Needed to push updated summary report back to the repo
+  contents: write
 
 jobs:
   security-scans:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js (for frontend & retire.js)
+      - name: Setup Node.js (frontend & retire.js)
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Setup Python (for semgrep, bandit)
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
@@ -30,57 +29,48 @@ jobs:
       - name: Install dependencies
         run: |
           npm install -g retire
-          pip install --upgrade pip
           pip install semgrep bandit
 
-      - name: Run Bandit Scan (Python backend)
-        run: bandit -r backend -f json -o bandit-report.json
+      - name: Run Bandit Scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-backend.json
 
       - name: Run Semgrep Frontend Scan
-        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > semgrep-frontend.json || true
+        run: semgrep --config .github/semgrep/frontend-rules.yml frontend --json > security-reports/raw/semgrep-frontend.json || true
 
       - name: Run Semgrep Backend Scan
-        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > semgrep-backend.json || true
+        run: semgrep --config .github/semgrep/backend-rules.yml backend --json > security-reports/raw/semgrep-backend.json || true
 
-      - name: Run Retire.js Scan (frontend dependencies)
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+      - name: Run Retire.js Scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
-      - name: Run Gitleaks Scan (Secrets detection)
+      - name: Run Gitleaks Scan
         uses: zricethezav/gitleaks-action@v2
         with:
-          args: --redact --report-path=gitleaks-report.json || true
+          args: --redact --report-path=security-reports/raw/gitleaks-report.json || true
 
-      - name: Run Trivy Scan (Container image vulnerabilities)
+      - name: Run Trivy Scan (Docker image)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: your-image-name:latest # Replace with your actual Docker image if scanning containers
+          image-ref: your-image-name:latest
           format: json
-          output: trivy-report.json
+          output: security-reports/raw/trivy-report.json
 
-      - name: Run OWASP ZAP Baseline Scan (Dynamic Application Security Testing)
+      - name: Run OWASP ZAP Baseline Scan
         run: |
-          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py \
-            -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
+          docker run --rm -v $(pwd):/zap/wrk:rw -t ghcr.io/zaproxy/zap-stable zap-baseline.py             -t https://secdevops-demo-frontend.onrender.com -r zap-report.html || true
           mkdir -p security-reports/raw
           mv zap-report.html security-reports/raw/zap-report.html
 
-      - name: Upload all scan artifacts
+      - name: Upload scan artifacts
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-reports
-          path: |
-            bandit-report.json
-            semgrep-frontend.json
-            semgrep-backend.json
-            retire-frontend.json
-            gitleaks-report.json
-            trivy-report.json
-            security-reports/raw/zap-report.html
+          path: security-reports/raw/
 
-      - name: Generate consolidated security summary report
+      - name: Generate security summary report
         run: python3 scripts/generate_report.py
 
-      - name: Commit and push updated security summary report
+      - name: Commit and push security summary report
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -90,4 +80,3 @@ jobs:
             git add security-reports/summary_report.md
             git commit -m "✨ Update security summary report [skip ci]"
             git push
-          fi
