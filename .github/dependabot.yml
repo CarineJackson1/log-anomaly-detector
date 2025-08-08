@@ -18,10 +18,10 @@ updates:
       prefix: "deps"
       include-scope: true
     rebase-strategy: auto
-    ignore:
-      - dependency-name: "pytest"
-        versions: ["*"]
-
+  ignore:
+  - dependency-name: "pytest"
+    update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    
   # Node.js Frontend
   - package-ecosystem: "npm"
     directory: "/frontend"
