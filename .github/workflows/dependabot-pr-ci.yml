@@ -1,4 +1,4 @@
-name: Dependabot PR CI - Astroskills LMS
+name: Dependabot PR CI - Astroskills LMS & Full Security Scan
 
 on:
   pull_request_target:
@@ -14,61 +14,189 @@ permissions:
   pull-requests: write
 
 jobs:
-  security-scan:
-    name: Security Scan (Safe Dependabot)
+  semgrep-frontend-react:
+    name: 🕵️ Semgrep React Scan
     runs-on: ubuntu-latest
-
+    continue-on-error: true
     steps:
-      - name: 📥 Checkout base code (safe)
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
-
-      - name: 🔧 Set up Python & Node
-        uses: actions/setup-python@v5
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - run: pip install semgrep
+      - run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: semgrep-frontend-react
+          path: semgrep-frontend-react.json
+
+  semgrep-frontend-ts:
+    name: 🕵️ Semgrep TS Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install semgrep
+      - run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: semgrep-frontend-ts
+          path: semgrep-frontend-ts.json
+
+  semgrep-backend:
+    name: 🕵️ Semgrep Backend Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install semgrep
+      - run: |
+          semgrep --config=p/ci/python --config=.semgrep/not_covered_functions.yml \
+            --json --output=semgrep-backend.json backend || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: semgrep-backend
+          path: semgrep-backend.json
+
+  bandit-scan:
+    name: 🛡️ Bandit Backend Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install bandit
+      - run: |
+          mkdir -p security-reports/raw
+          cd backend
+          bandit -r . -f json -o ../security-reports/raw/bandit-report.json || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: bandit-report
+          path: security-reports/raw/bandit-report.json
+
+  gitleaks-scan:
+    name: 🔐 Gitleaks Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: npm install -g gitleaks
+      - run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
 
-      - name: 🔐 Install security tools
-        run: |
-          pip install semgrep bandit reportlab beautifulsoup4
-          npm install -g gitleaks retire trivy
+  retirejs-scan:
+    name: 🧱 Retire.js Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: npm install -g retire
+      - run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: retirejs-report
+          path: retire-frontend.json
 
-      - name: 🕵️ Run Semgrep React Scan
-        run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
+  trivy-scan:
+    name: 🐳 Trivy Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - run: trivy fs --format json --output trivy-report.json . || true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: trivy-report
+          path: trivy-report.json
 
-      - name: 🕵️ Run Semgrep TS Scan
-        run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
+  aggregate-and-report:
+    name: 🧠 Aggregate, Generate Report, Comment & Auto-Close PR if Critical
+    runs-on: ubuntu-latest
+    needs:
+      - semgrep-frontend-react
+      - semgrep-frontend-ts
+      - semgrep-backend
+      - bandit-scan
+      - gitleaks-scan
+      - retirejs-scan
+      - trivy-scan
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v3
 
-      - name: 🕵️ Run Semgrep Backend Scan (custom + security rules)
-        run: |
-          semgrep --config=p/ci/python --config=.semgrep/not_covered_functions.yml \
-            --json --output=semgrep-backend.json backend || true
+      - uses: actions/download-artifact@v3
+        with:
+          name: semgrep-frontend-react
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: semgrep-frontend-ts
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: semgrep-backend
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: bandit-report
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: gitleaks-report
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: retirejs-report
+          path: security-reports/raw
+      - uses: actions/download-artifact@v3
+        with:
+          name: trivy-report
+          path: security-reports/raw
 
-      - name: 🛡️ Run Bandit Backend Scan
-        run: |
-          cd backend
-          bandit -r . -f json -o ../security-reports/raw/bandit-report.json || true
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: 🔐 Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+      - name: Install dependencies for report generation
+        run: pip install reportlab beautifulsoup4
 
-      - name: 🧱 Run Retire.js Scan
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
-
-      - name: 🐳 Run Trivy Scan
-        run: trivy fs --format json --output trivy-report.json . || true
-
-      - name: 📄 Organize reports
-        run: |
-          mkdir -p security-reports/raw
-          mv *.json security-reports/raw/
-
-      - name: 🧠 Generate Markdown Report and Detect Critical Issues
-        id: generate
+      - name: Generate Markdown Report
+        id: generate_report
         run: |
           python .github/scripts/generate_full_report.py \
             --bandit security-reports/raw/bandit-report.json \
@@ -80,16 +208,13 @@ jobs:
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md || true
 
-          echo "CRITICAL_ISSUES=$(grep -q '❌ Critical' security-reports/summary_report.md && echo true || echo false)" >> $GITHUB_ENV
-
-      - name: ☁️ Upload report artifacts
-        if: env.CRITICAL_ISSUES == 'true'
-        uses: actions/upload-artifact@v4
+      - name: Upload full report artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: security-scan-results
-          path: security-reports/
+          name: security-scan-full-report
+          path: security-reports/summary_report.md
 
-      - name: 🗨️ Post PR summary comment
+      - name: Post PR summary comment
         uses: actions/github-script@v7
         with:
           script: |
@@ -112,8 +237,65 @@ jobs:
               body: `## 🔐 Dependabot Security Scan Summary\n\n${truncated}`
             });
 
-      - name: 🚨 Label PR if critical issues found
-        if: env.CRITICAL_ISSUES == 'true'
+      - name: Check for Critical Vulnerabilities and Fail if Found
+        run: |
+          python - <<'EOF'
+import json
+import sys
+import os
+
+def contains_critical(file_path, key_paths):
+    if not os.path.exists(file_path):
+        return False
+    try:
+        with open(file_path) as f:
+            data = json.load(f)
+        def recursive_search(obj):
+            if isinstance(obj, dict):
+                for k,v in obj.items():
+                    if k in key_paths and isinstance(v, list):
+                        for item in v:
+                            if recursive_search(item):
+                                return True
+                    elif k == 'severity' and v.lower() == 'critical':
+                        return True
+                    elif isinstance(v, (dict, list)):
+                        if recursive_search(v):
+                            return True
+                return False
+            elif isinstance(obj, list):
+                return any(recursive_search(i) for i in obj)
+            return False
+        return recursive_search(data)
+    except Exception as e:
+        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
+        return False
+
+files_and_keys = {
+    "security-reports/raw/bandit-report.json": ["results"],
+    "security-reports/raw/semgrep-backend.json": ["results"],
+    "security-reports/raw/semgrep-frontend-react.json": ["results"],
+    "security-reports/raw/semgrep-frontend-ts.json": ["results"],
+    "security-reports/raw/gitleaks-report.json": ["Leaks"],
+    "security-reports/raw/retire-frontend.json": ["data"],
+    "security-reports/raw/trivy-report.json": ["Results"]
+}
+
+critical_found = False
+for f,k in files_and_keys.items():
+    if contains_critical(f,k):
+        print(f"Critical issue found in {f}")
+        critical_found = True
+
+if critical_found:
+    print("❌ Critical vulnerabilities detected! Failing the job.")
+    sys.exit(1)
+else:
+    print("✅ No critical vulnerabilities detected.")
+EOF
+
+      - name: Label PR if critical issues found
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
@@ -124,8 +306,8 @@ jobs:
               labels: ['security-review-needed']
             });
 
-      - name: ❌ Auto-close PR if critical issues found
-        if: env.CRITICAL_ISSUES == 'true'
+      - name: Auto-close PR if critical issues found
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
@@ -134,12 +316,4 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number,
               state: 'closed'
-            })
-
-# Backend test job disabled for now — uncomment when tests exist
-# backend-tests:
-#   name: ✅ Backend Tests (disabled)
-#   runs-on: ubuntu-latest
-#   needs: security-scan
-#   steps:
-#     - run: echo "Skipping backend tests — no tests present."
+            });
