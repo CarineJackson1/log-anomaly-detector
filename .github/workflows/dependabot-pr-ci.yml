@@ -59,22 +59,6 @@ jobs:
             --retire retire-frontend.json \
             --output security-reports/summary_report.md || true
 
-      - name: Debug: Show all scan JSON reports
-        run: |
-          echo "=== bandit-report.json ==="
-          cat bandit-report.json || echo "bandit-report.json not found"
-          echo "=== semgrep-backend.json ==="
-          cat semgrep-backend.json || echo "semgrep-backend.json not found"
-          echo "=== semgrep-frontend.json ==="
-          cat semgrep-frontend.json || echo "semgrep-frontend.json not found"
-          echo "=== gitleaks-report.json ==="
-          cat gitleaks-report.json || echo "gitleaks-report.json not found"
-          echo "=== retire-frontend.json ==="
-          cat retire-frontend.json || echo "retire-frontend.json not found"
-
-      - name: Debug: Show Markdown summary report
-        run: cat security-reports/summary_report.md || echo "summary_report.md not found"
-
       - name: Post PR comment with report
         uses: actions/github-script@v7
         with:
@@ -94,36 +78,36 @@ jobs:
       - name: Fail if critical issues found and label + close PR
         run: |
           python - <<'EOF'
-import json, sys, os
-def has_critical(f):
-    if not os.path.exists(f): return False
-    try:
-        data = json.load(open(f))
-        def search(obj):
-            if isinstance(obj, dict):
-                if obj.get('severity', '').lower() == 'critical':
-                    return True
-                for v in obj.values():
-                    if search(v): return True
-            elif isinstance(obj, list):
-                for i in obj:
-                    if search(i): return True
-            return False
-        return search(data)
-    except: return False
+          import json, sys, os
+          def has_critical(f):
+              if not os.path.exists(f): return False
+              try:
+                  data = json.load(open(f))
+                  def search(obj):
+                      if isinstance(obj, dict):
+                          if obj.get('severity', '').lower() == 'critical':
+                              return True
+                          for v in obj.values():
+                              if search(v): return True
+                      elif isinstance(obj, list):
+                          for i in obj:
+                              if search(i): return True
+                      return False
+                  return search(data)
+              except: return False
 
-files = [
-    'bandit-report.json',
-    'semgrep-backend.json',
-    'semgrep-frontend.json',
-    'gitleaks-report.json',
-    'retire-frontend.json',
-]
+          files = [
+              'bandit-report.json',
+              'semgrep-backend.json',
+              'semgrep-frontend.json',
+              'gitleaks-report.json',
+              'retire-frontend.json',
+          ]
 
-if any(has_critical(f) for f in files):
-    print("Critical issues detected! Failing...")
-    sys.exit(1)
-EOF
+          if any(has_critical(f) for f in files):
+              print("Critical issues detected! Failing...")
+              sys.exit(1)
+          EOF
         continue-on-error: false
 
       - name: Add label and close PR if failed
