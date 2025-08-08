@@ -11,7 +11,7 @@ class UserSchema(Schema):
     role = fields.Str(
         required=False,
         validate=validate.OneOf([role.value for role in UserRole]),
-        missing=UserRole.LEARNER.value
+        load_default=UserRole.LEARNER.value
     )
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)

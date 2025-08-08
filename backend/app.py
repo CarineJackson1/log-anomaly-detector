@@ -8,13 +8,13 @@ from routes.auth_routes import auth_bp
 from utils.error_handlers import register_error_handlers
 
 # Create Flask application instance
-def create_app():
+def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     
     CORS(app, resources={r"/auth/*": {"origins": "*"}})
     
     # Configure the application with development settings
-    app.config.from_object(DevelopmentConfig)
+    app.config.from_object(config_class)
     
     # JWT configuration
     # This secret key should be kept secure and not hardcoded in production.

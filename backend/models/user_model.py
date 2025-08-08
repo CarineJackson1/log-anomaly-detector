@@ -1,6 +1,6 @@
 from database import db
 from datetime import datetime
-from passlib.hash import bcrypt
+from passlib.hash import bcrypt # type: ignore
 import enum
 
 # Setting User Roles for Learner, Employer, and Admin

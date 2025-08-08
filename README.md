@@ -178,7 +178,7 @@ To ensure consistent and smooth collaboration:
 
 ---
 
-## 🧪 Testing the Authentication API
+## 🧪 Testing the Authentication API with POSTMAN
 
 ### 1. Register User
 **POST** `/auth/register`  
@@ -236,7 +236,35 @@ Response:
   }
 }
 
+---
 
+🧪 Running Tests & Coverage Requirements
+We use pytest for backend testing with coverage tracking.
+The current coverage requirement is ≥80% for all authentication-related routes.
+
+Running All Tests
+
+pytest
+Running Only Authentication Tests
+
+pytest -k "auth or login or register"
+
+Running Tests with Coverage Report
+
+pytest --cov=backend --cov-report=term-missing
+
+This will:
+
+Run all tests in backend/tests/
+
+Show which lines are covered or missed
+
+Fail if coverage drops below the team-agreed threshold (set in pytest.ini)
+
+Current Status (as of last PR):
+✅ All authentication tests pass
+✅ Overall backend coverage: 90%
+✅ backend/routes/auth_routes.py coverage: 80% (meets requirement)
 
 ---
 

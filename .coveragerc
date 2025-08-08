@@ -1,0 +1,14 @@
+[run]
+source = backend
+branch = True
+omit =
+    backend/tests/*
+    backend/**/__init__.py
+    backend/configs/*
+    backend/migrations/*
+    backend/**/settings*.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
