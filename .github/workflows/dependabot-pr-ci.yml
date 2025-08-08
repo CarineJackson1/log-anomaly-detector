@@ -1,8 +1,7 @@
-name: Dependabot PR CI - Astroskills LMS & Full Security Scan
+name: Bare Bones Dependabot Security Scan
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
     branches:
       - develop
     paths-ignore:
@@ -14,287 +13,110 @@ permissions:
   pull-requests: write
 
 jobs:
-  semgrep-frontend-react:
-    name: 🕵️ Semgrep React Scan
+  security-scan:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install semgrep
-      - run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: semgrep-frontend-react
-          path: semgrep-frontend-react.json
 
-  semgrep-frontend-ts:
-    name: 🕵️ Semgrep TS Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install semgrep
-      - run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: semgrep-frontend-ts
-          path: semgrep-frontend-ts.json
-
-  semgrep-backend:
-    name: 🕵️ Semgrep Backend Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install semgrep
-      - run: |
-          semgrep --config=p/ci/python --config=.semgrep/not_covered_functions.yml \
-            --json --output=semgrep-backend.json backend || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: semgrep-backend
-          path: semgrep-backend.json
-
-  bandit-scan:
-    name: 🛡️ Bandit Backend Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install bandit
-      - run: |
-          mkdir -p security-reports/raw
-          cd backend
-          bandit -r . -f json -o ../security-reports/raw/bandit-report.json || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: bandit-report
-          path: security-reports/raw/bandit-report.json
-
-  gitleaks-scan:
-    name: 🔐 Gitleaks Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install -g gitleaks retire
-      - run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: gitleaks-report
-          path: gitleaks-report.json
-
-  retirejs-scan:
-    name: 🧱 Retire.js Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - run: npm install -g retire
-      - run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: retirejs-report
-          path: retire-frontend.json
-
-  trivy-scan:
-    name: 🐳 Trivy Scan
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: 🔐 Install Trivy
-        run: curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-      - run: trivy fs --format json --output trivy-report.json . || true
-      - uses: actions/upload-artifact@v3
-        with:
-          name: trivy-report
-          path: trivy-report.json
-
-  aggregate-and-report:
-    name: 🧠 Aggregate, Generate Report, Comment & Auto-Close PR if Critical
-    runs-on: ubuntu-latest
-    needs:
-      - semgrep-frontend-react
-      - semgrep-frontend-ts
-      - semgrep-backend
-      - bandit-scan
-      - gitleaks-scan
-      - retirejs-scan
-      - trivy-scan
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-frontend-react
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-frontend-ts
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: semgrep-backend
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: bandit-report
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: gitleaks-report
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: retirejs-report
-          path: security-reports/raw
-      - uses: actions/download-artifact@v3
-        with:
-          name: trivy-report
-          path: security-reports/raw
-
-      - name: Setup Python
+      - name: Setup Python and Node
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Install dependencies for report generation
-        run: pip install reportlab beautifulsoup4
+      - name: Install tools
+        run: |
+          pip install semgrep bandit reportlab beautifulsoup4
+          npm install -g gitleaks retire
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Semgrep Scan (frontend + backend)
+        run: |
+          semgrep --config=p/ci/python --json --output=semgrep-backend.json backend || true
+          semgrep --config=p/react --json --output=semgrep-frontend.json frontend/src || true
+
+      - name: Run Bandit Scan
+        run: bandit -r backend -f json -o bandit-report.json || true
+
+      - name: Run Gitleaks Scan
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+
+      - name: Run Retire.js Scan
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+
+      - name: Run Trivy Scan
+        run: trivy fs --format json --output trivy-report.json . || true
 
       - name: Generate Markdown Report
-        id: generate_report
         run: |
+          mkdir -p security-reports
           python .github/scripts/generate_full_report.py \
-            --bandit security-reports/raw/bandit-report.json \
-            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
-            --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
-            --semgrep-backend security-reports/raw/semgrep-backend.json \
-            --gitleaks security-reports/raw/gitleaks-report.json \
-            --retire security-reports/raw/retire-frontend.json \
-            --trivy security-reports/raw/trivy-report.json \
+            --bandit bandit-report.json \
+            --semgrep-backend semgrep-backend.json \
+            --semgrep-frontend semgrep-frontend.json \
+            --gitleaks gitleaks-report.json \
+            --retire retire-frontend.json \
+            --trivy trivy-report.json \
             --output security-reports/summary_report.md || true
 
-      - name: Upload full report artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: security-scan-full-report
-          path: security-reports/summary_report.md
-
-      - name: Post PR summary comment
+      - name: Post PR comment with report
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const MAX_CHARS = 60000;
-            const summaryPath = 'security-reports/summary_report.md';
-
-            if (!fs.existsSync(summaryPath)) {
-              core.warning("No report found.");
-              return;
-            }
-
-            const summary = fs.readFileSync(summaryPath, 'utf8');
-            const truncated = summary.length > MAX_CHARS ? summary.slice(0, MAX_CHARS) + "\n\n...truncated" : summary;
-
+            const path = 'security-reports/summary_report.md';
+            if (!fs.existsSync(path)) return;
+            const body = fs.readFileSync(path, 'utf8');
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🔐 Dependabot Security Scan Summary\n\n${truncated}`
+              body: `## 🔐 Security Scan Summary\n\n${body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body}`
             });
 
-      - name: Check for Critical Vulnerabilities and Fail if Found
+      - name: Fail if critical issues found and label + close PR
         run: |
           python - <<'EOF'
-import json
-import sys
-import os
-
-def contains_critical(file_path, key_paths):
-    if not os.path.exists(file_path):
-        return False
+import json, sys, os
+def has_critical(f):
+    if not os.path.exists(f): return False
     try:
-        with open(file_path) as f:
-            data = json.load(f)
-        def recursive_search(obj):
+        data = json.load(open(f))
+        def search(obj):
             if isinstance(obj, dict):
-                for k,v in obj.items():
-                    if k in key_paths and isinstance(v, list):
-                        for item in v:
-                            if recursive_search(item):
-                                return True
-                    elif k == 'severity' and v.lower() == 'critical':
-                        return True
-                    elif isinstance(v, (dict, list)):
-                        if recursive_search(v):
-                            return True
-                return False
+                if obj.get('severity', '').lower() == 'critical':
+                    return True
+                for v in obj.values():
+                    if search(v): return True
             elif isinstance(obj, list):
-                return any(recursive_search(i) for i in obj)
+                for i in obj:
+                    if search(i): return True
             return False
-        return recursive_search(data)
-    except Exception as e:
-        print(f"Warning: Could not parse {file_path}: {e}", file=sys.stderr)
-        return False
+        return search(data)
+    except: return False
 
-files_and_keys = {
-    "security-reports/raw/bandit-report.json": ["results"],
-    "security-reports/raw/semgrep-backend.json": ["results"],
-    "security-reports/raw/semgrep-frontend-react.json": ["results"],
-    "security-reports/raw/semgrep-frontend-ts.json": ["results"],
-    "security-reports/raw/gitleaks-report.json": ["Leaks"],
-    "security-reports/raw/retire-frontend.json": ["data"],
-    "security-reports/raw/trivy-report.json": ["Results"]
-}
+files = [
+    'bandit-report.json',
+    'semgrep-backend.json',
+    'semgrep-frontend.json',
+    'gitleaks-report.json',
+    'retire-frontend.json',
+    'trivy-report.json',
+]
 
-critical_found = False
-for f,k in files_and_keys.items():
-    if contains_critical(f,k):
-        print(f"Critical issue found in {f}")
-        critical_found = True
-
-if critical_found:
-    print("❌ Critical vulnerabilities detected! Failing the job.")
+if any(has_critical(f) for f in files):
+    print("Critical issues detected! Failing...")
     sys.exit(1)
-else:
-    print("✅ No critical vulnerabilities detected.")
 EOF
+        continue-on-error: false
 
-      - name: Label PR if critical issues found
+      - name: Add label and close PR if failed
         if: failure()
         uses: actions/github-script@v7
         with:
@@ -305,12 +127,6 @@ EOF
               repo: context.repo.repo,
               labels: ['security-review-needed']
             });
-
-      - name: Auto-close PR if critical issues found
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
             await github.rest.pulls.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
