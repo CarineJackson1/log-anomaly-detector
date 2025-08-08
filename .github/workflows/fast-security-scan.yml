@@ -1,0 +1,87 @@
+name: Fast Security Scan
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  fast-scan:
+    runs-on: ubuntu-latest
+    name: Quick Semgrep Scan
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: 📦 Install Semgrep dependencies
+        run: pip install semgrep beautifulsoup4
+
+      - name: 🔍 Run Semgrep Scan
+        run: |
+          mkdir -p security-reports
+          semgrep --config=p/ci --json --output=security-reports/semgrep.json . || true
+
+      - name: ☁️ Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: security-reports/semgrep.json
+
+      - name: 💬 Post Semgrep summary to PR
+        if: github.actor != 'dependabot[bot]'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'security-reports/semgrep.json';
+            if (!fs.existsSync(path)) {
+              core.warning("Semgrep report not found.");
+              return;
+            }
+
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const results = data.results || [];
+            const MAX_CHARS = 60000;
+
+            let body = "";
+            if (results.length === 0) {
+              body = "✅ **Semgrep found no issues.**";
+            } else {
+              body = `⚠️ **Semgrep found ${results.length} issue(s):**\n\n` +
+                results.slice(0, 10).map(r => {
+                  const file = r.path || "unknown file";
+                  const line = r.start?.line || "?";
+                  const message = r.extra?.message || "No message";
+                  const severity = r.extra?.severity || "N/A";
+                  return `- \`${file}:${line}\` — ${message} _(Severity: ${severity})_`;
+                }).join('\n') +
+                (results.length > 10 ? `\n\n...and ${results.length - 10} more.` : '');
+            }
+
+            const truncated = body.length > MAX_CHARS
+              ? body.slice(0, MAX_CHARS) + "\n\n...truncated"
+              : body;
+
+            if (context.issue.number) {
+              try {
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 🔍 Fast Semgrep Scan Report\n\n${truncated}`
+                });
+              } catch (error) {
+                core.warning(`Unable to comment on PR: ${error.message}`);
+              }
+            } else {
+              console.log("No PR number found, skipping comment.");
+            }
