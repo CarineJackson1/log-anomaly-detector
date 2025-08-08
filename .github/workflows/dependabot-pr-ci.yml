@@ -43,11 +43,15 @@ jobs:
       - name: 🕵️ Run Semgrep TS Scan
         run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
 
-      - name: 🕵️ Run Semgrep Backend Scan
-        run: semgrep --config p/ci/python --json --output semgrep-backend.json backend || true
+      - name: 🕵️ Run Semgrep Backend Scan (custom + security rules)
+        run: |
+          semgrep --config=p/ci/python --config=.semgrep/not_covered_functions.yml \
+            --json --output=semgrep-backend.json backend || true
 
-      - name: 🔍 Run Bandit Backend Scan
-        run: bandit -r backend -f json -o bandit-report.json || true
+      - name: 🛡️ Run Bandit Backend Scan
+        run: |
+          cd backend
+          bandit -r . -f json -o ../security-reports/raw/bandit-report.json || true
 
       - name: 🔐 Run Gitleaks Scan
         run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
@@ -130,25 +134,12 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number,
               state: 'closed'
-            });
+            })
 
-  backend-tests:
-    name: ✅ Backend Tests (if exist)
-    runs-on: ubuntu-latest
-    needs: security-scan
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: ✅ Run backend tests
-        run: |
-          cd backend
-          if ls tests/test_*.py 1> /dev/null 2>&1; then
-            echo "🧪 Running backend tests..."
-            pytest tests/
-          else
-            echo "⚠️ No backend tests found. Skipping."
+# Backend test job disabled for now — uncomment when tests exist
+# backend-tests:
+#   name: ✅ Backend Tests (disabled)
+#   runs-on: ubuntu-latest
+#   needs: security-scan
+#   steps:
+#     - run: echo "Skipping backend tests — no tests present."
