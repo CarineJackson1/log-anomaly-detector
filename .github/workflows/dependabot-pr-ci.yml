@@ -59,6 +59,22 @@ jobs:
             --retire retire-frontend.json \
             --output security-reports/summary_report.md || true
 
+      - name: Debug: Show all scan JSON reports
+        run: |
+          echo "=== bandit-report.json ==="
+          cat bandit-report.json || echo "bandit-report.json not found"
+          echo "=== semgrep-backend.json ==="
+          cat semgrep-backend.json || echo "semgrep-backend.json not found"
+          echo "=== semgrep-frontend.json ==="
+          cat semgrep-frontend.json || echo "semgrep-frontend.json not found"
+          echo "=== gitleaks-report.json ==="
+          cat gitleaks-report.json || echo "gitleaks-report.json not found"
+          echo "=== retire-frontend.json ==="
+          cat retire-frontend.json || echo "retire-frontend.json not found"
+
+      - name: Debug: Show Markdown summary report
+        run: cat security-reports/summary_report.md || echo "summary_report.md not found"
+
       - name: Post PR comment with report
         uses: actions/github-script@v7
         with:
