@@ -11,7 +11,7 @@ permissions:
 jobs:
   fast-scan:
     runs-on: ubuntu-latest
-    name: Quick Semgrep Scan
+    name: 🔍 Quick Semgrep Scan
 
     steps:
       - name: 📥 Checkout code
@@ -22,13 +22,15 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: 📦 Install Semgrep dependencies
-        run: pip install semgrep beautifulsoup4
+      - name: 📦 Install Semgrep
+        run: pip install semgrep
+
+      - name: 🗂️ Create output folder
+        run: mkdir -p security-reports
 
       - name: 🔍 Run Semgrep Scan
         run: |
-          mkdir -p security-reports
-          semgrep --config=p/ci --json --output=security-reports/semgrep.json . || true
+          semgrep --config=auto --json --output=security-reports/semgrep.json . || true
 
       - name: ☁️ Upload Semgrep report
         uses: actions/upload-artifact@v4
@@ -56,7 +58,17 @@ jobs:
             if (results.length === 0) {
               body = "✅ **Semgrep found no issues.**";
             } else {
-              body = `⚠️ **Semgrep found ${results.length} issue(s):**\n\n` +
+              const severityCounts = results.reduce((acc, r) => {
+                const level = r.extra?.severity || "unknown";
+                acc[level] = (acc[level] || 0) + 1;
+                return acc;
+              }, {});
+              
+              const severitySummary = Object.entries(severityCounts)
+                .map(([k, v]) => `- ${k}: ${v}`)
+                .join('\n');
+
+              body = `⚠️ **Semgrep found ${results.length} issue(s):**\n\n**By severity:**\n${severitySummary}\n\n` +
                 results.slice(0, 10).map(r => {
                   const file = r.path || "unknown file";
                   const line = r.start?.line || "?";
