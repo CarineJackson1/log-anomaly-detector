@@ -148,7 +148,7 @@ jobs:
         run: |
           cd backend
           if ls tests/test_*.py 1> /dev/null 2>&1; then
-            pip install -r requirements.txt
+            echo "🧪 Running backend tests..."
             pytest tests/
           else
-            echo "🟡 No backend tests found, skipping."
+            echo "⚠️ No backend tests found. Skipping."
