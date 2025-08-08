@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-from backend.schemas.user_schema import UserSchema
-from backend.schemas.login_schema import LoginSchema
-from backend.models.user_model import User
-from backend.database import db
+from schemas.user_schema import UserSchema
+from schemas.login_schema import LoginSchema
+from models.user_model import User
+from database import db
 from sqlalchemy.exc import IntegrityError
-from backend.utils.response_helpers import success_response
+from utils.response_helpers import success_response
 
 # Initialize the UserSchema for serialization and deserialization
 # This schema will be used to validate and serialize user data in API requests and responses.

@@ -1,11 +1,11 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from backend.config import DevelopmentConfig
-from backend.routes.healthcheck_routes import healthcheck_bp
-from backend.database import db, init_db
-from backend.routes.auth_routes import auth_bp
-from backend.utils.error_handlers import register_error_handlers
+from config import DevelopmentConfig
+from routes.healthcheck_routes import healthcheck_bp
+from database import db, init_db
+from routes.auth_routes import auth_bp
+from utils.error_handlers import register_error_handlers
 
 # Create Flask application instance
 def create_app(config_class=DevelopmentConfig):

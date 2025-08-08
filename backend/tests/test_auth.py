@@ -1,7 +1,7 @@
 import pytest
-from backend.app import create_app, db
-from backend.models import User
-from backend.config import TestingConfig
+from app import create_app, db
+from models import User
+from config import TestingConfig
 
 @pytest.fixture
 def test_client():
