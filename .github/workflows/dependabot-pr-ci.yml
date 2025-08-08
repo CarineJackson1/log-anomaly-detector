@@ -1,0 +1,122 @@
+name: Dependabot PR CI - Astroskills LMS
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    name: Run Tests and Full Security Scans on Dependabot PR
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: 🧪 Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: 📦 Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: ✅ Run backend tests
+        run: |
+          cd backend
+          pytest
+
+      - name: ✅ Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --watchAll=false
+
+      - name: 🔐 Install security tools
+        run: |
+          pip install semgrep bandit reportlab beautifulsoup4
+          npm install -g gitleaks retire trivy
+
+      - name: 🕵️ Run Semgrep React Scan
+        run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
+
+      - name: 🕵️ Run Semgrep TS Scan
+        run: semgrep --config p/typescript --json --output semgrep-frontend-ts.json frontend/src || true
+
+      - name: 🕵️ Run Semgrep Backend Scan
+        run: semgrep --config p/ci/python --json --output semgrep-backend.json backend || true
+
+      - name: 🔍 Run Bandit Backend Scan
+        run: bandit -r backend -f json -o bandit-report.json || true
+
+      - name: 🔐 Run Gitleaks Scan
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+
+      - name: 🧱 Run Retire.js Scan
+        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+
+      - name: 🐳 Run Trivy Scan (filesystem)
+        run: trivy fs --format json --output trivy-report.json . || true
+
+      - name: 📄 Organize reports
+        run: |
+          mkdir -p security-reports/raw
+          mv semgrep-frontend-react.json semgrep-frontend-ts.json semgrep-backend.json \
+             bandit-report.json gitleaks-report.json retire-frontend.json trivy-report.json \
+             security-reports/raw/
+
+      - name: 🧠 Generate summary report (MD + PDF)
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
+            --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md
+
+      - name: ☁️ Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-security-scan
+          path: |
+            security-reports/summary_report.md
+            security-reports/summary_report.pdf
+            security-reports/raw/
+
+      - name: 🗨️ Post PR summary comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔐 Dependabot Security Scan Summary\n\n${summary}`
+            });
+
+      - name: 🚨 Label PR if critical issues found
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });

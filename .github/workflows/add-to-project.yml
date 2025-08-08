@@ -1,0 +1,16 @@
+name: Add PRs to GitHub Project
+
+on:
+  pull_request:
+    types: [labeled, opened]
+
+jobs:
+  add-to-project:
+    if: contains(github.event.pull_request.labels.*.name, 'security-scan-required')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add PR to GitHub project board
+        uses: actions/add-to-project@v1
+        with:
+          project-url: https://github.com/orgs/AstroSkill/projects/YOUR_PROJECT_NUMBER
+          github-token: ${{ secrets.PROJECT_PAT }}
