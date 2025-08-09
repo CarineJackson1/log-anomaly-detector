@@ -103,13 +103,13 @@ jobs:
             security-reports/summary_report.md
             security-reports/raw/
 
-      - name: Post or update PR comment with report
-        run: node .github/scripts/post-pr-comment.js
+      - name: Post or update PR comment with report (external script)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .github/scripts/post-pr-comment.js
 
       - name: Fail on critical issues
         id: critical-check
