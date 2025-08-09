@@ -1,0 +1,15 @@
+rules:
+  - id: untested-controller-or-route
+    pattern: |
+      def $FUNC(...):
+        ...
+    paths:
+      include:
+        - backend/controllers/
+        - backend/routes/
+    message: "Function $FUNC may not be covered by any test."
+    severity: WARNING
+    languages: [python]
+    metadata:
+      category: coverage
+      confidence: LOW

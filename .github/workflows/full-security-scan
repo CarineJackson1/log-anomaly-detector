@@ -19,15 +19,21 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python & Node.js
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
-      - uses: actions/setup-node@v3
+          python-version: '3.11'
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18
-
+      
+        develop
       - name: 📁 Create reports directory
+
+      - name: 📁 Create report folders
+        main
         run: mkdir -p security-reports/raw
 
       - name: 📦 Install tools & dependencies
@@ -35,6 +41,10 @@ jobs:
           pip install -r requirements-ci.txt
           npm ci
           npm install -g retire gitleaks
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - name: 🧪 Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
@@ -69,13 +79,50 @@ jobs:
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md
 
+      - name: Fail if critical issues found
+        run: |
+          python - <<'EOF'
+          import json
+          import sys
+
+          def has_critical(path):
+              try:
+                  data = json.load(open(path))
+              except Exception:
+                  return False
+              def search(obj):
+                  if isinstance(obj, dict):
+                      if obj.get('severity', '').lower() == 'critical' or obj.get('issue_severity', '').lower() == 'critical' or obj.get('Severity', '').lower() == 'critical':
+                          return True
+                      return any(search(v) for v in obj.values())
+                  if isinstance(obj, list):
+                      return any(search(i) for i in obj)
+                  return False
+              return search(data)
+
+          files = [
+              'security-reports/raw/bandit-report.json',
+              'security-reports/raw/semgrep-backend.json',
+              'security-reports/raw/semgrep-frontend-react.json',
+              'security-reports/raw/semgrep-frontend-ts.json',
+              'security-reports/raw/gitleaks-report.json',
+              'security-reports/raw/retire-frontend.json',
+              'security-reports/raw/trivy-report.json',
+          ]
+
+          if any(has_critical(f) for f in files):
+              print("❌ Critical issues detected! Failing the workflow.")
+              sys.exit(1)
+          else:
+              print("✅ No critical issues found.")
+          EOF
+
       - name: ☁️ Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: full-security-scan-reports
           path: |
             security-reports/summary_report.md
-            security-reports/summary_report.pdf
             security-reports/raw/
 
       - name: 💬 Post PR comment with full report
@@ -145,6 +192,24 @@ jobs:
 
       - name: Label and close PR on critical issues
         if: steps.critical-check.conclusion == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: Label and close PR if critical issues found
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
