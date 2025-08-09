@@ -109,11 +109,13 @@ def get_current_user():
     # This allows the client to retrieve their own user information securely.
     if not user:
         return jsonify({"status": "error", "message": "User not found"}), 404
+    # Convert the user's role to a string for the response
+    role_out = getattr(user.role, "value", str(user.role)).lower() if user.role else "learner"
     # Serialize the user data using the UserSchema
     # This ensures that the response format is consistent and includes only the necessary fields.
     return success_response({
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "role": user.role.value
+        "role": role_out
     }, message="User retrieved successfully")
