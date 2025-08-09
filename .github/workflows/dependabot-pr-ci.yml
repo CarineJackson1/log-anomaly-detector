@@ -24,10 +24,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.ref }}
 
-      - name: 🔐 Install security tools
+      - name: Install security tools
         run: |
-          pip install semgrep bandit reportlab beautifulsoup4
-          npm install -g gitleaks retire trivy
+          pip install -r requirements-ci.txt
+          npm install -g gitleaks retire
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - name: 🕵️ Run Semgrep React Scan
         run: semgrep --config p/react --json --output semgrep-frontend-react.json frontend/src || true
@@ -82,7 +86,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const MAX_CHARS = 60000;
+            const core = require('@actions/core');
             const summaryPath = 'security-reports/summary_report.md';
 
             if (!fs.existsSync(summaryPath)) {
@@ -91,6 +95,7 @@ jobs:
             }
 
             const summary = fs.readFileSync(summaryPath, 'utf8');
+            const MAX_CHARS = 60000;
             const truncated = summary.length > MAX_CHARS ? summary.slice(0, MAX_CHARS) + "\n\n...truncated" : summary;
 
             await github.rest.issues.createComment({
