@@ -1,4 +1,4 @@
-name: Bare Bones Dependabot Security Scan (With Trivy)
+name: CI/CD Security Scan
 
 on:
   pull_request_target:
@@ -15,114 +15,181 @@ permissions:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+    name: 🔐 Security Scan
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Setup Python and Node
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - uses: actions/setup-node@v4
+
+      - name: Cache npm packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install tools
+      - name: Create reports directory
+        run: mkdir -p security-reports/raw
+
+      - name: Install security tools
         run: |
-          pip install semgrep bandit reportlab beautifulsoup4
+          pip install -r requirements.txt
           npm install -g gitleaks retire
 
       - name: Install Trivy
         run: |
-          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.44.0_Linux-64bit.tar.gz
-          tar zxvf trivy_0.44.0_Linux-64bit.tar.gz
-          sudo mv trivy /usr/local/bin/
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Run Semgrep Scan (frontend + backend)
-        run: |
-          semgrep --config=p/ci/python --json --output=semgrep-backend.json backend || true
-          semgrep --config=p/react --json --output=semgrep-frontend.json frontend/src || true
+      - name: Run Semgrep Backend Scan
+        id: semgrep-backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend
+
+      - name: Run Semgrep Frontend Scan
+        id: semgrep-frontend
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src
 
       - name: Run Bandit Scan
-        run: bandit -r backend -f json -o bandit-report.json || true
+        id: bandit
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json
 
       - name: Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
+        id: gitleaks
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json
 
       - name: Run Retire.js Scan
-        run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
+        id: retire
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json
 
       - name: Run Trivy Scan
-        run: trivy fs --format json --output trivy-report.json . || true
+        id: trivy
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json .
 
-      - name: Generate Markdown Report
+      - name: Generate Security Report
+        id: generate-report
         run: |
-          mkdir -p security-reports
           python .github/scripts/generate_full_report.py \
-            --bandit bandit-report.json \
-            --semgrep-backend semgrep-backend.json \
-            --semgrep-frontend semgrep-frontend.json \
-            --gitleaks gitleaks-report.json \
-            --retire retire-frontend.json \
-            --trivy trivy-report.json \
-            --output security-reports/summary_report.md || true
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md
 
-      - name: Post PR comment with report
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/raw/
+
+      - name: Post or update PR comment with report
+        id: comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const MAX_CHARS = 60000;
+            const core = require('@actions/core');
             const path = 'security-reports/summary_report.md';
-            if (!fs.existsSync(path)) return;
+            if (!fs.existsSync(path)) {
+              core.warning("Summary report not found, skipping comment.");
+              return;
+            }
             const body = fs.readFileSync(path, 'utf8');
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            const MAX_CHARS = 60000;
+            const truncated = body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body;
+
+            // List existing comments on this PR
+            const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🔐 Security Scan Summary\n\n${body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body}`
+              issue_number: context.issue.number,
             });
 
-      - name: Fail if critical issues found and label + close PR
+            // Try to find our previous comment by bot
+            const existing = comments.data.find(c => c.user.type === 'Bot' && c.body.startsWith('## 🔐 Security Scan Report'));
+
+            if (existing) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            }
+
+      - name: Fail on critical issues
+        id: critical-check
         run: |
-          python - <<'EOF'
+          python - <<EOF
           import json, sys, os
-          def has_critical(f):
-              if not os.path.exists(f): return False
+          def has_critical(path):
+              if not os.path.exists(path):
+                  return False
               try:
-                  data = json.load(open(f))
-                  def search(obj):
-                      if isinstance(obj, dict):
-                          if obj.get('severity', '').lower() == 'critical':
+                  data = json.load(open(path))
+              except:
+                  return False
+              def search(obj):
+                  if isinstance(obj, dict):
+                      for key in ['severity', 'issue_severity', 'Severity']:
+                          if obj.get(key, '').lower() == 'critical':
                               return True
-                          for v in obj.values():
-                              if search(v): return True
-                      elif isinstance(obj, list):
-                          for i in obj:
-                              if search(i): return True
-                      return False
-                  return search(data)
-              except: return False
+                      return any(search(v) for v in obj.values())
+                  if isinstance(obj, list):
+                      return any(search(i) for i in obj)
+                  return False
+              return search(data)
 
           files = [
-              'bandit-report.json',
-              'semgrep-backend.json',
-              'semgrep-frontend.json',
-              'gitleaks-report.json',
-              'retire-frontend.json',
-              'trivy-report.json',
+              'security-reports/raw/bandit-report.json',
+              'security-reports/raw/semgrep-backend.json',
+              'security-reports/raw/semgrep-frontend.json',
+              'security-reports/raw/gitleaks-report.json',
+              'security-reports/raw/retire-frontend.json',
+              'security-reports/raw/trivy-report.json',
           ]
 
           if any(has_critical(f) for f in files):
-              print("Critical issues detected! Failing...")
+              print("❌ Critical vulnerabilities found. Failing the workflow.")
               sys.exit(1)
+          else:
+              print("✅ No critical vulnerabilities found.")
           EOF
-        continue-on-error: false
 
-      - name: Add label and close PR if failed
-        if: failure()
+      - name: Label and close PR on critical issues
+        if: steps.critical-check.conclusion == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
