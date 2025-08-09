@@ -6,6 +6,7 @@ from models.user_model import User
 from database import db
 from sqlalchemy.exc import IntegrityError
 from utils.response_helpers import success_response
+from enum import Enum
 
 # Initialize the UserSchema for serialization and deserialization
 # This schema will be used to validate and serialize user data in API requests and responses.
@@ -17,6 +18,12 @@ login_schema = LoginSchema()
 
 # Create a Blueprint for authentication routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+def _role_to_str(role) -> str:
+    # Handles Enum and string roles
+    if isinstance(role, Enum):
+        return (role.value).lower()
+    return (str(role) if role is not None else "").lower()
 
 # Define routes for the authentication blueprint
 # ------------- This route can be used to check if the auth service is running
@@ -72,8 +79,10 @@ def login():
     # If the user exists and the password is correct, create a JWT token.
     user = User.query.filter_by(email=data['email']).first()
     if user and user.check_password(data['password']):
+        # Convert the user's role to a string for JWT claims
+        role_str = _role_to_str(user.role)
         # Prepare additional claims for the JWT token
-        additional_claims = {"role": user.role}  # "learner" / "employer" / "admin"
+        additional_claims = {"role": role_str}  # "learner" / "employer" / "admin"
         # Create JWT token
         access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
         # Return the token and user details in the response.
