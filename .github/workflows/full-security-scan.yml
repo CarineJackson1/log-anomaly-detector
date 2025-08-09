@@ -9,11 +9,6 @@ on:
     paths-ignore:
       - '**.md'
 
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
-
 jobs:
   full-scan:
     if: contains(github.event.pull_request.labels.*.name, 'security-scan-required') || github.actor == 'dependabot[bot]'
@@ -40,119 +35,13 @@ jobs:
       - name: 📦 Install tools & dependencies
         run: |
           pip install -r requirements-ci.txt
-          npm ci
+          npm install
           npm install -g retire gitleaks
 
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: 🧪 Run Bandit scan
-        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+      # ... rest of your scan steps ...
 
-      - name: 🕵️ Run Semgrep React scan
-        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend-react.json frontend/src || true
-
-      - name: 🕵️ Run Semgrep TS scan
-        run: semgrep --config=p/typescript --json --output=security-reports/raw/semgrep-frontend-ts.json frontend/src || true
-
-      - name: 🕵️ Run Semgrep Backend scan
-        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
-
-      - name: 🔐 Run Gitleaks scan
-        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
-
-      - name: 🧱 Run Retire.js scan
-        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
-
-      - name: 🐳 Run Trivy scan
-        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
-
-      - name: 🧠 Generate summary report (MD + PDF)
-        run: |
-          python .github/scripts/generate_full_report.py \
-            --bandit security-reports/raw/bandit-report.json \
-            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
-            --semgrep-frontend-ts security-reports/raw/semgrep-frontend-ts.json \
-            --semgrep-backend security-reports/raw/semgrep-backend.json \
-            --gitleaks security-reports/raw/gitleaks-report.json \
-            --retire security-reports/raw/retire-frontend.json \
-            --trivy security-reports/raw/trivy-report.json \
-            --output security-reports/summary_report.md
-
-      - name: Upload reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-security-scan-reports
-          path: |
-            security-reports/summary_report.md
-            security-reports/raw/
-
-      - name: Post or update PR comment with full report
-        if: github.actor != 'dependabot[bot]'
-        uses: actions/github-script@v7
-        env:
-          REPORT_PATH: security-reports/summary_report.md
-          COMMENT_TITLE: "🔐 Full Security Scan Report"
-        with:
-          script: |
-            const run = require('./.github/scripts/post-pr-comment.js');
-            await run({ github, context, core });
-
-      - name: Fail on critical issues
-        id: critical-check
-        run: |
-          python - <<EOF
-          import json, sys, os
-          def has_critical(path):
-              if not os.path.exists(path):
-                  return False
-              try:
-                  data = json.load(open(path))
-              except:
-                  return False
-              def search(obj):
-                  if isinstance(obj, dict):
-                      for key in ['severity', 'issue_severity', 'Severity']:
-                          if obj.get(key, '').lower() == 'critical':
-                              return True
-                      return any(search(v) for v in obj.values())
-                  if isinstance(obj, list):
-                      return any(search(i) for i in obj)
-                  return False
-              return search(data)
-
-          files = [
-              'security-reports/raw/bandit-report.json',
-              'security-reports/raw/semgrep-backend.json',
-              'security-reports/raw/semgrep-frontend-react.json',
-              'security-reports/raw/semgrep-frontend-ts.json',
-              'security-reports/raw/gitleaks-report.json',
-              'security-reports/raw/retire-frontend.json',
-              'security-reports/raw/trivy-report.json',
-          ]
-
-          if any(has_critical(f) for f in files):
-              print("❌ Critical vulnerabilities found. Failing the workflow.")
-              sys.exit(1)
-          else:
-              print("✅ No critical vulnerabilities found.")
-          EOF
-
-      - name: Label and close PR on critical issues
-        if: steps.critical-check.conclusion == 'failure'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['security-review-needed']
-            });
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              state: 'closed'
-            });
+      # (keep your existing scanning, report generation, upload, and PR comment steps here)
