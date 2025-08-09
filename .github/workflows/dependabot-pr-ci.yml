@@ -1,4 +1,4 @@
-name: Bare Bones Dependabot Security Scan (No Trivy)
+name: Bare Bones Dependabot Security Scan (With Trivy)
 
 on:
   pull_request_target:
@@ -34,6 +34,12 @@ jobs:
           pip install semgrep bandit reportlab beautifulsoup4
           npm install -g gitleaks retire
 
+      - name: Install Trivy
+        run: |
+          wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.44.0_Linux-64bit.tar.gz
+          tar zxvf trivy_0.44.0_Linux-64bit.tar.gz
+          sudo mv trivy /usr/local/bin/
+
       - name: Run Semgrep Scan (frontend + backend)
         run: |
           semgrep --config=p/ci/python --json --output=semgrep-backend.json backend || true
@@ -48,6 +54,9 @@ jobs:
       - name: Run Retire.js Scan
         run: retire --path frontend --outputformat json --outputpath retire-frontend.json || true
 
+      - name: Run Trivy Scan
+        run: trivy fs --format json --output trivy-report.json . || true
+
       - name: Generate Markdown Report
         run: |
           mkdir -p security-reports
@@ -57,6 +66,7 @@ jobs:
             --semgrep-frontend semgrep-frontend.json \
             --gitleaks gitleaks-report.json \
             --retire retire-frontend.json \
+            --trivy trivy-report.json \
             --output security-reports/summary_report.md || true
 
       - name: Post PR comment with report
@@ -102,6 +112,7 @@ jobs:
               'semgrep-frontend.json',
               'gitleaks-report.json',
               'retire-frontend.json',
+              'trivy-report.json',
           ]
 
           if any(has_critical(f) for f in files):
