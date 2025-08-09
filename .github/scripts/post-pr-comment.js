@@ -1,71 +1,49 @@
+// .github/scripts/post-pr-comment.js
 const fs = require('fs');
-const { Octokit } = require('@octokit/rest');
 
-async function main() {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    console.error("GITHUB_TOKEN is not set in environment variables.");
-    process.exit(1);
-  }
+async function run({ github, context, core }) {
+  const reportPath = process.env.REPORT_PATH;
+  const commentTitle = process.env.COMMENT_TITLE || "🔍 Security Scan Report";
+  const maxChars = 60000;
 
-  const octokit = new Octokit({ auth: token });
-
-  // Get required info from env variables (GitHub Actions sets these automatically)
-  const owner = process.env.GITHUB_REPOSITORY_OWNER;
-  const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
-  const prNumber = process.env.PR_NUMBER;
-
-  if (!owner || !repo || !prNumber) {
-    console.error("Missing owner, repo, or PR number environment variables.");
-    process.exit(1);
-  }
-
-  const reportPath = 'security-reports/summary_report.md';
-  if (!fs.existsSync(reportPath)) {
-    console.log("Summary report not found, skipping comment.");
+  if (!reportPath || !fs.existsSync(reportPath)) {
+    console.log(`Report not found at: ${reportPath}`);
     return;
   }
 
-  const reportContent = fs.readFileSync(reportPath, 'utf8');
-  const MAX_CHARS = 60000;
-  const truncatedContent = reportContent.length > MAX_CHARS
-    ? reportContent.slice(0, MAX_CHARS) + "\n\n...truncated"
-    : reportContent;
+  const content = fs.readFileSync(reportPath, 'utf8');
+  const truncated = content.length > maxChars
+    ? content.slice(0, maxChars) + "\n\n...truncated"
+    : content;
 
-  // List comments on the PR
-  const { data: comments } = await octokit.rest.issues.listComments({
-    owner,
-    repo,
-    issue_number: prNumber,
+  const comments = await github.rest.issues.listComments({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    issue_number: context.issue.number,
   });
 
-  // Find existing bot comment starting with report header
-  const existingComment = comments.find(
-    c => c.user.type === 'Bot' && c.body.startsWith('## 🔐 Security Scan Report')
+  const existing = comments.data.find(c =>
+    c.user.type === 'Bot' &&
+    c.body.startsWith(`## ${commentTitle}`)
   );
 
-  if (existingComment) {
-    // Update the existing comment
-    await octokit.rest.issues.updateComment({
-      owner,
-      repo,
-      comment_id: existingComment.id,
-      body: `## 🔐 Security Scan Report\n\n${truncatedContent}`,
+  if (existing) {
+    await github.rest.issues.updateComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      comment_id: existing.id,
+      body: `## ${commentTitle}\n\n${truncated}`,
     });
-    console.log("Updated existing security scan comment.");
+    console.log(`Updated existing comment: ${commentTitle}`);
   } else {
-    // Create new comment
-    await octokit.rest.issues.createComment({
-      owner,
-      repo,
-      issue_number: prNumber,
-      body: `## 🔐 Security Scan Report\n\n${truncatedContent}`,
+    await github.rest.issues.createComment({
+      issue_number: context.issue.number,
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      body: `## ${commentTitle}\n\n${truncated}`,
     });
-    console.log("Created new security scan comment.");
+    console.log(`Created new comment: ${commentTitle}`);
   }
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+module.exports = run;
