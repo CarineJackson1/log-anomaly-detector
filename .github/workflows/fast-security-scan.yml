@@ -51,11 +51,9 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const path = process.env.REPORT_PATH;
-            const MAX_CHARS = 60000;
 
             if (!fs.existsSync(path)) {
-              console.log("Semgrep report not found.");
+              console.warn("Semgrep report not found.");
               return;
             }
 
@@ -91,24 +89,17 @@ jobs:
               ? body.slice(0, MAX_CHARS) + "\n\n...truncated"
               : body;
 
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const existing = comments.data.find(c =>
-              c.user.type === 'Bot' &&
-              c.body.startsWith('## 🔍 Fast Semgrep Scan Report')
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body: `## 🔍 Fast Semgrep Scan Report\n\n${truncated}`,
-              });
+            if (context.issue.number) {
+              try {
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 🔍 Fast Semgrep Scan Report\n\n${truncated}`
+                });
+              } catch (error) {
+                console.warn(`Unable to comment on PR: ${error.message}`);
+              }
             } else {
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
