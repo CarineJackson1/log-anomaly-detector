@@ -9,39 +9,63 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   full-scan:
-    if: contains(github.event.pull_request.labels.*.name, 'security-scan-required') || github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: 🔐 Full Security Scan
 
     steps:
-      - name: 📥 Checkout code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Setup Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: 🧰 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: 📁 Create reports directory
+      - name: Create reports directory
         run: mkdir -p security-reports/raw
 
-      - name: 📦 Install tools & dependencies
+      - name: Install Python and npm global tools
         run: |
           pip install -r requirements-ci.txt
-          npm install
           npm install -g retire gitleaks
 
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      # ... rest of your scan steps ...
+      # Add your scan steps here, e.g., Bandit, Semgrep, etc.
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
-      # (keep your existing scanning, report generation, upload, and PR comment steps here)
+      - name: Run Semgrep React scan
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend-react.json frontend/src || true
+
+      # ... more scan steps ...
+
+      - name: Generate report
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
+            # other reports ...
+            --output security-reports/summary_report.md
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/raw/
