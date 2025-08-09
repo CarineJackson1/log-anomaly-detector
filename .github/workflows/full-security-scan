@@ -9,6 +9,11 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   full-scan:
     if: contains(github.event.pull_request.labels.*.name, 'security-scan-required') || github.actor == 'dependabot[bot]'
@@ -28,12 +33,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-      
-        develop
-      - name: 📁 Create reports directory
 
-      - name: 📁 Create report folders
-        main
+      - name: 📁 Create reports directory
         run: mkdir -p security-reports/raw
 
       - name: 📦 Install tools & dependencies
@@ -79,45 +80,7 @@ jobs:
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md
 
-      - name: Fail if critical issues found
-        run: |
-          python - <<'EOF'
-          import json
-          import sys
-
-          def has_critical(path):
-              try:
-                  data = json.load(open(path))
-              except Exception:
-                  return False
-              def search(obj):
-                  if isinstance(obj, dict):
-                      if obj.get('severity', '').lower() == 'critical' or obj.get('issue_severity', '').lower() == 'critical' or obj.get('Severity', '').lower() == 'critical':
-                          return True
-                      return any(search(v) for v in obj.values())
-                  if isinstance(obj, list):
-                      return any(search(i) for i in obj)
-                  return False
-              return search(data)
-
-          files = [
-              'security-reports/raw/bandit-report.json',
-              'security-reports/raw/semgrep-backend.json',
-              'security-reports/raw/semgrep-frontend-react.json',
-              'security-reports/raw/semgrep-frontend-ts.json',
-              'security-reports/raw/gitleaks-report.json',
-              'security-reports/raw/retire-frontend.json',
-              'security-reports/raw/trivy-report.json',
-          ]
-
-          if any(has_critical(f) for f in files):
-              print("❌ Critical issues detected! Failing the workflow.")
-              sys.exit(1)
-          else:
-              print("✅ No critical issues found.")
-          EOF
-
-      - name: ☁️ Upload reports
+      - name: Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: full-security-scan-reports
@@ -125,30 +88,16 @@ jobs:
             security-reports/summary_report.md
             security-reports/raw/
 
-      - name: 💬 Post PR comment with full report
+      - name: Post or update PR comment with full report
+        if: github.actor != 'dependabot[bot]'
         uses: actions/github-script@v7
+        env:
+          REPORT_PATH: security-reports/summary_report.md
+          COMMENT_TITLE: "🔐 Full Security Scan Report"
         with:
           script: |
-            const fs = require('fs');
-            const MAX_CHARS = 60000;
-            const path = 'security-reports/summary_report.md';
-
-            if (!fs.existsSync(path)) {
-              console.log("No PR report found, skipping comment.");
-              return;
-            }
-
-            const content = fs.readFileSync(path, 'utf8');
-            const truncated = content.length > MAX_CHARS ? content.slice(0, MAX_CHARS) + "\n\n...truncated" : content;
-
-            // Optionally update existing comment logic here if desired (not included)
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 🔐 Full Security Scan Report\n\n${truncated}`,
-            });
+            const run = require('./.github/scripts/post-pr-comment.js');
+            await run({ github, context, core });
 
       - name: Fail on critical issues
         id: critical-check
@@ -192,24 +141,6 @@ jobs:
 
       - name: Label and close PR on critical issues
         if: steps.critical-check.conclusion == 'failure'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['security-review-needed']
-            });
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              state: 'closed'
-            });
-
-      - name: Label and close PR if critical issues found
-        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
