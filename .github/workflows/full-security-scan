@@ -75,6 +75,44 @@ jobs:
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md
 
+      - name: Fail if critical issues found
+        run: |
+          python - <<'EOF'
+          import json
+          import sys
+
+          def has_critical(path):
+              try:
+                  data = json.load(open(path))
+              except Exception:
+                  return False
+              def search(obj):
+                  if isinstance(obj, dict):
+                      if obj.get('severity', '').lower() == 'critical' or obj.get('issue_severity', '').lower() == 'critical' or obj.get('Severity', '').lower() == 'critical':
+                          return True
+                      return any(search(v) for v in obj.values())
+                  if isinstance(obj, list):
+                      return any(search(i) for i in obj)
+                  return False
+              return search(data)
+
+          files = [
+              'security-reports/raw/bandit-report.json',
+              'security-reports/raw/semgrep-backend.json',
+              'security-reports/raw/semgrep-frontend-react.json',
+              'security-reports/raw/semgrep-frontend-ts.json',
+              'security-reports/raw/gitleaks-report.json',
+              'security-reports/raw/retire-frontend.json',
+              'security-reports/raw/trivy-report.json',
+          ]
+
+          if any(has_critical(f) for f in files):
+              print("❌ Critical issues detected! Failing the workflow.")
+              sys.exit(1)
+          else:
+              print("✅ No critical issues found.")
+          EOF
+
       - name: ☁️ Upload reports
         uses: actions/upload-artifact@v4
         with:
@@ -98,4 +136,22 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## 🔐 Full Security Scan Report\n\n${summary}`
+            });
+
+      - name: Label and close PR if critical issues found
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
             });
