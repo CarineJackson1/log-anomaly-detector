@@ -109,30 +109,26 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
+            // const core = require('@actions/core'); // Uncomment only if used and declared once
 
             const path = 'security-reports/summary_report.md';
             if (!fs.existsSync(path)) {
-              core.warning("Summary report not found, skipping comment.");
+              console.warn("Summary report not found, skipping comment.");
               return;
             }
-
             const body = fs.readFileSync(path, 'utf8');
             const MAX_CHARS = 60000;
             const truncated = body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body;
 
-            // List existing comments on this PR
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
 
-            // Try to find our previous comment by bot
             const existing = comments.data.find(c => c.user.type === 'Bot' && c.body.startsWith('## 🔐 Security Scan Report'));
 
             if (existing) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -140,7 +136,6 @@ jobs:
                 body: `## 🔐 Security Scan Report\n\n${truncated}`,
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
