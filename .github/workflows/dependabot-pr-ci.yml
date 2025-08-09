@@ -54,6 +54,7 @@ jobs:
 
       - name: Install security tools
         run: pip install -r requirements-ci.txt
+
       - name: Install Trivy
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
