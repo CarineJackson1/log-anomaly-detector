@@ -6,6 +6,7 @@ from routes.healthcheck_routes import healthcheck_bp
 from database import db, init_db
 from routes.auth_routes import auth_bp
 from utils.error_handlers import register_error_handlers
+from routes.protected_routes import protected_bp
 
 # Create Flask application instance
 def create_app(config_class=DevelopmentConfig):
@@ -29,7 +30,8 @@ def create_app(config_class=DevelopmentConfig):
     # Register Blueprints
     app.register_blueprint(healthcheck_bp)
     app.register_blueprint(auth_bp)
-    
+    app.register_blueprint(protected_bp)
+
     # Register error handlers
     # This function will register custom error handlers for the application.
     register_error_handlers(app)
