@@ -27,9 +27,12 @@ jobs:
         with:
           node-version: 18
 
+      - name: 📁 Create reports directory
+        run: mkdir -p security-reports/raw
+
       - name: 📦 Install tools & dependencies
         run: |
-          pip install semgrep bandit reportlab beautifulsoup4
+          pip install -r requirements-ci.txt
           npm ci
           npm install -g retire gitleaks
 
@@ -80,14 +83,80 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            if (!context.issue.number) {
-              console.log("No PR number found, skipping comment.");
+            const MAX_CHARS = 60000;
+            const path = 'security-reports/summary_report.md';
+
+            if (!fs.existsSync(path)) {
+              console.log("No PR report found, skipping comment.");
               return;
             }
-            const summary = fs.readFileSync('security-reports/summary_report.md', 'utf8');
+
+            const content = fs.readFileSync(path, 'utf8');
+            const truncated = content.length > MAX_CHARS ? content.slice(0, MAX_CHARS) + "\n\n...truncated" : content;
+
+            // Optionally update existing comment logic here if desired (not included)
+
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🔐 Full Security Scan Report\n\n${summary}`
+              body: `## 🔐 Full Security Scan Report\n\n${truncated}`,
+            });
+
+      - name: Fail on critical issues
+        id: critical-check
+        run: |
+          python - <<EOF
+          import json, sys, os
+          def has_critical(path):
+              if not os.path.exists(path):
+                  return False
+              try:
+                  data = json.load(open(path))
+              except:
+                  return False
+              def search(obj):
+                  if isinstance(obj, dict):
+                      for key in ['severity', 'issue_severity', 'Severity']:
+                          if obj.get(key, '').lower() == 'critical':
+                              return True
+                      return any(search(v) for v in obj.values())
+                  if isinstance(obj, list):
+                      return any(search(i) for i in obj)
+                  return False
+              return search(data)
+
+          files = [
+              'security-reports/raw/bandit-report.json',
+              'security-reports/raw/semgrep-backend.json',
+              'security-reports/raw/semgrep-frontend-react.json',
+              'security-reports/raw/semgrep-frontend-ts.json',
+              'security-reports/raw/gitleaks-report.json',
+              'security-reports/raw/retire-frontend.json',
+              'security-reports/raw/trivy-report.json',
+          ]
+
+          if any(has_critical(f) for f in files):
+              print("❌ Critical vulnerabilities found. Failing the workflow.")
+              sys.exit(1)
+          else:
+              print("✅ No critical vulnerabilities found.")
+          EOF
+
+      - name: Label and close PR on critical issues
+        if: steps.critical-check.conclusion == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
             });
