@@ -116,16 +116,17 @@ def contains_critical(data, tool):
     return False
 
 def generate_pdf(md_text, pdf_path):
-    styles = getSampleStyleSheet()
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
-    story = []
-    for line in md_text.split("\n"):
-        if line.strip() == "":
-            story.append(Spacer(1, 12))
-        else:
-            story.append(Paragraph(line, styles['Normal']))
-    doc.build(story)
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
 
+    try:
+        c = canvas.Canvas(pdf_path, pagesize=letter)
+        c.drawString(100, 750, "✅ Test PDF - PDF generation is working!")
+        c.save()
+        print(f"✅ Simple test PDF generated at {pdf_path}")
+    except Exception as e:
+        print(f"❌ Error generating simple PDF: {e}")
+        
 def main():
     parser = argparse.ArgumentParser(description="Generate combined security report")
     parser.add_argument("--bandit", help="Path to bandit JSON report")
