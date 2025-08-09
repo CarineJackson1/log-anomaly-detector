@@ -19,12 +19,12 @@ login_schema = LoginSchema()
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # Define routes for the authentication blueprint
-# This route can be used to check if the auth service is running
+# ------------- This route can be used to check if the auth service is running
 @auth_bp.route('/', methods=['GET'])
 def root():
     return success_response(message="Authentication routes are live and responding.")
 
-# Health check endpoint
+# ---------------------- Health check endpoint
 # Status endpoint to check if the auth service is operational
 @auth_bp.route('/status', methods=['GET'])
 def status():
@@ -32,7 +32,7 @@ def status():
         "auth_status": "ready"
     })
 
-# Registration endpoint to create a new user
+# ---------------------- Registration endpoint to create a new user
 # This endpoint expects a JSON payload with user details and creates a new user in the database.
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -57,7 +57,7 @@ def register():
         db.session.rollback()
         return jsonify({"status": "error", "message": "User registration failed due to an integrity error."}), 400
 
-# Login endpoint for user authentication
+# ---------------------- Login endpoint for user authentication
 # This endpoint expects a JSON payload with email and password, verifies the credentials, and returns a JWT token if successful.
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -72,8 +72,10 @@ def login():
     # If the user exists and the password is correct, create a JWT token.
     user = User.query.filter_by(email=data['email']).first()
     if user and user.check_password(data['password']):
+        # Prepare additional claims for the JWT token
+        additional_claims = {"role": user.role}  # "learner" / "employer" / "admin"
         # Create JWT token
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
         # Return the token and user details in the response.
         # This allows the client to use the token for subsequent authenticated requests.
         return success_response({
@@ -85,7 +87,7 @@ def login():
         # This ensures that the user receives feedback on why the login failed.
         return jsonify({"status": "error", "message": "Invalid email or password"}), 401
 
-# Endpoint to get the current user's details
+# ---------------------- Endpoint to get the current user's details
 # This endpoint requires a valid JWT token and returns the user's information.
 @auth_bp.route('/me', methods=['GET'])
 # This route is protected by JWT authentication
