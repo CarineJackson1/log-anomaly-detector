@@ -49,11 +49,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
 
             const path = 'security-reports/raw/semgrep.json';
             if (!fs.existsSync(path)) {
-              core.warning("Semgrep report not found.");
+              console.warn("Semgrep report not found.");
               return;
             }
 
@@ -99,7 +98,7 @@ jobs:
                   body: `## 🔍 Fast Semgrep Scan Report\n\n${truncated}`
                 });
               } catch (error) {
-                core.warning(`Unable to comment on PR: ${error.message}`);
+                console.warn(`Unable to comment on PR: ${error.message}`);
               }
             } else {
               console.log("No PR number found, skipping comment.");
