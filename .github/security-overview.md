@@ -43,10 +43,6 @@ We leverage Dependabot for:
 | GitHub Actions  | Weekly   | Yes        | `develop`     |
 | Docker          | Weekly   | Yes        | `develop`     |
 
-## Contact
-
-For security concerns, please email security@astroskill.com.
-
 ---
 
 *Keeping AstroSkill Connector safe and trustworthy for our users and partners.*
