@@ -22,7 +22,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: 🧰 Setup Node.js
         uses: actions/setup-node@v3
@@ -37,6 +37,10 @@ jobs:
           pip install semgrep bandit reportlab beautifulsoup4
           npm ci
           npm install -g retire gitleaks
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - name: 🧪 Run Bandit scan
         run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
@@ -77,7 +81,6 @@ jobs:
           name: full-security-scan-reports
           path: |
             security-reports/summary_report.md
-            security-reports/summary_report.pdf
             security-reports/raw/
 
       - name: 💬 Post PR comment with full report
