@@ -18,6 +18,7 @@ updates:
     assignees:
       - CarineJackson1
 <<<<<<< HEAD
+<<<<<<< HEAD
     allow:
       - dependency-type: "all"
     ignore:
@@ -26,6 +27,8 @@ updates:
       - update-types: ["version-update:semver-major"]
 =======
 >>>>>>> origin/develop
+=======
+>>>>>>> a10167b749fec08386ba5c1ce67c174919ceddd5
     commit-message:
       prefix: "deps"
       include-scope: true
@@ -51,12 +54,15 @@ updates:
     assignees:
       - CarineJackson1
 <<<<<<< HEAD
+<<<<<<< HEAD
     allow:
       - dependency-type: "all"
     ignore:
       - update-types: ["version-update:semver-major"]
 =======
 >>>>>>> origin/develop
+=======
+>>>>>>> a10167b749fec08386ba5c1ce67c174919ceddd5
     commit-message:
       prefix: "deps"
       include-scope: true
