@@ -1,0 +1,88 @@
+name: CI/CD Security Scan
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  security-scan:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install security tools
+        run: |
+          pip install -r requirements-ci.txt
+          npm install -g gitleaks retire
+
+      - name: 📥 Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: 📁 Create reports directory
+        run: mkdir -p security-reports/raw
+
+      - name: 🔍 Semgrep Backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
+
+      - name: 🔍 Semgrep Frontend
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src || true
+
+      - name: 🐍 Bandit
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+
+      - name: 🔑 Gitleaks
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
+
+      - name: 📦 Retire.js
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: 🛡️ Trivy
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
+
+      - name: 📤 Upload report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-security-scan-reports
+          path: security-reports/raw/
+
+      - name: 💬 Post concise PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const backendPath = 'security-reports/raw/semgrep-backend.json';
+            const frontendPath = 'security-reports/raw/semgrep-frontend.json';
+            let totalFindings = 0;
+            [backendPath, frontendPath].forEach(file => {
+              if (fs.existsSync(file)) {
+                totalFindings += JSON.parse(fs.readFileSync(file, 'utf8')).results.length;
+              }
+            });
+            const summary = `## 🔐 Full Security Scan\nFound **${totalFindings}** potential issues.\nDownload the artifact for details.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary,
+            });
