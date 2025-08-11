@@ -52,12 +52,15 @@ jobs:
           script: |
             const fs = require('fs');
 
-            if (!fs.existsSync(path)) {
+            const reportPath = process.env.REPORT_PATH || 'security-reports/raw/semgrep.json';
+            const MAX_CHARS = 65000;
+
+            if (!fs.existsSync(reportPath)) {
               console.warn("Semgrep report not found.");
               return;
             }
 
-            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const data = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
             const results = data.results || [];
 
             let body = "";
@@ -100,11 +103,4 @@ jobs:
               } catch (error) {
                 console.warn(`Unable to comment on PR: ${error.message}`);
               }
-            } else {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## 🔍 Fast Semgrep Scan Report\n\n${truncated}`,
-              });
             }
