@@ -1,0 +1,25 @@
+rules:
+  - id: use-of-eval
+    message: "Avoid use of eval() due to security risk"
+    severity: ERROR
+    languages: [python]
+    pattern: eval(...)
+
+  - id: use-of-subprocess-with-shell-true
+    message: "Avoid subprocess with shell=True — risk of command injection"
+    severity: ERROR
+    languages: [python]
+    pattern: subprocess.Popen(..., shell=True)
+
+  - id: hardcoded-secret
+    message: "Potential hardcoded secret detected"
+    severity: WARNING
+    languages: [python]
+    pattern-either:
+      - pattern: API_KEY = "..."
+      - pattern: PASSWORD = "..."
+      - pattern: SECRET = "..."
+      - pattern: TOKEN = "..."
+      - pattern: ACCESS_TOKEN = "..."
+      - pattern: AWS_SECRET_ACCESS_KEY = "..."
+      - pattern: DB_PASSWORD = "..."

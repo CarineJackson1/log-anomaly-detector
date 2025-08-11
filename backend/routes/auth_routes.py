@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-from backend.schemas.user_schema import UserSchema
-from backend.schemas.login_schema import LoginSchema
-from backend.models.user_model import User
-from backend.database import db
+from schemas.user_schema import UserSchema
+from schemas.login_schema import LoginSchema
+from models.user_model import User
+from database import db
 from sqlalchemy.exc import IntegrityError
-from backend.utils.response_helpers import success_response
+from utils.response_helpers import success_response
+from enum import Enum
 
 # Initialize the UserSchema for serialization and deserialization
 # This schema will be used to validate and serialize user data in API requests and responses.
@@ -18,13 +19,19 @@ login_schema = LoginSchema()
 # Create a Blueprint for authentication routes
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+def _role_to_str(role) -> str:
+    # Handles Enum and string roles
+    if isinstance(role, Enum):
+        return (role.value).lower()
+    return (str(role) if role is not None else "").lower()
+
 # Define routes for the authentication blueprint
-# This route can be used to check if the auth service is running
+# ------------- This route can be used to check if the auth service is running
 @auth_bp.route('/', methods=['GET'])
 def root():
     return success_response(message="Authentication routes are live and responding.")
 
-# Health check endpoint
+# ---------------------- Health check endpoint
 # Status endpoint to check if the auth service is operational
 @auth_bp.route('/status', methods=['GET'])
 def status():
@@ -32,7 +39,7 @@ def status():
         "auth_status": "ready"
     })
 
-# Registration endpoint to create a new user
+# ---------------------- Registration endpoint to create a new user
 # This endpoint expects a JSON payload with user details and creates a new user in the database.
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -57,7 +64,7 @@ def register():
         db.session.rollback()
         return jsonify({"status": "error", "message": "User registration failed due to an integrity error."}), 400
 
-# Login endpoint for user authentication
+# ---------------------- Login endpoint for user authentication
 # This endpoint expects a JSON payload with email and password, verifies the credentials, and returns a JWT token if successful.
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -72,8 +79,12 @@ def login():
     # If the user exists and the password is correct, create a JWT token.
     user = User.query.filter_by(email=data['email']).first()
     if user and user.check_password(data['password']):
+        # Convert the user's role to a string for JWT claims
+        role_str = _role_to_str(user.role)
+        # Prepare additional claims for the JWT token
+        additional_claims = {"role": role_str}  # "learner" / "employer" / "admin"
         # Create JWT token
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
         # Return the token and user details in the response.
         # This allows the client to use the token for subsequent authenticated requests.
         return success_response({
@@ -85,7 +96,7 @@ def login():
         # This ensures that the user receives feedback on why the login failed.
         return jsonify({"status": "error", "message": "Invalid email or password"}), 401
 
-# Endpoint to get the current user's details
+# ---------------------- Endpoint to get the current user's details
 # This endpoint requires a valid JWT token and returns the user's information.
 @auth_bp.route('/me', methods=['GET'])
 # This route is protected by JWT authentication
@@ -98,11 +109,13 @@ def get_current_user():
     # This allows the client to retrieve their own user information securely.
     if not user:
         return jsonify({"status": "error", "message": "User not found"}), 404
+    # Convert the user's role to a string for the response
+    role_out = getattr(user.role, "value", str(user.role)).lower() if user.role else "learner"
     # Serialize the user data using the UserSchema
     # This ensures that the response format is consistent and includes only the necessary fields.
     return success_response({
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "role": user.role.value
+        "role": role_out
     }, message="User retrieved successfully")

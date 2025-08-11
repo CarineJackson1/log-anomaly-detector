@@ -178,7 +178,7 @@ To ensure consistent and smooth collaboration:
 
 ---
 
-## 🧪 Testing the Authentication API
+## 🧪 Testing the Authentication API with POSTMAN
 
 ### 1. Register User
 **POST** `/auth/register`  
@@ -236,7 +236,89 @@ Response:
   }
 }
 
+---
 
+🧪 Running Tests & Coverage Requirements
+We use pytest for backend testing with coverage tracking.
+The current coverage requirement is ≥80% for all authentication-related routes.
+
+Running All Tests
+
+pytest
+Running Only Authentication Tests
+
+pytest -k "auth or login or register"
+
+Running Tests with Coverage Report
+
+pytest --cov=backend --cov-report=term-missing
+
+This will:
+
+Run all tests in backend/tests/
+
+Show which lines are covered or missed
+
+Fail if coverage drops below the team-agreed threshold (set in pytest.ini)
+
+Current Status (as of last PR):
+✅ All authentication tests pass
+✅ Overall backend coverage: 90%
+✅ backend/routes/auth_routes.py coverage: 80% (meets requirement)
+
+---
+
+🛡 Role-Based Access Control (RBAC)
+Role-Based Middleware has been implemented to protect sensitive routes based on a user’s role.
+Each authenticated request includes the user’s role claim inside the JWT, which is checked before allowing access.
+
+Available Roles
+learner
+
+employer
+
+admin
+
+Middleware Decorator
+The @roles_required(*roles) decorator is used to secure routes.
+Example:
+
+python
+from utils.auth_decorators import roles_required
+
+@app.route('/admin/dashboard')
+@roles_required('admin')
+def admin_dashboard():
+    return success_response({"message": "Welcome, admin!"})
+Users without the required role(s) will receive 403 Forbidden.
+
+Example Protected Route
+python
+@app.route('/reports')
+@roles_required('admin', 'employer')
+def view_reports():
+    return success_response({"reports": []})
+In this example, both admin and employer can access the /reports endpoint.
+
+Testing RBAC with Postman
+Login with a user that has the required role (e.g., admin) and copy the access_token.
+
+Call the protected route with the header:
+
+Authorization: Bearer <JWT_TOKEN>
+Expected:
+
+If you have the role → 200 OK
+
+If you don’t have the role → 403 Forbidden
+
+Example Response (403):
+
+json
+{
+  "status": "error",
+  "message": "You do not have permission to access this resource."
+}
 
 ---
 
@@ -249,3 +331,4 @@ Response:
 - **Daily Standups:** Tuesdays, 1pm CT / 2pm EST  
 - **Sprint Reviews:** Mondays, Wednesdays, Fridays at 6pm EST  
 - **Team Chat:** [Slack](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2) / [Discord](https://discord.com/channels/1396991822990938244/1396991824006090935)
+# Testing Full Scan

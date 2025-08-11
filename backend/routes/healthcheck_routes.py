@@ -1,5 +1,5 @@
 from flask import Blueprint
-from backend.controllers.healthcheck_controller import get_health_status
+from controllers.healthcheck_controller import get_health_status
 
 # Define the Blueprint for health check routes
 healthcheck_bp = Blueprint("healthcheck", __name__, url_prefix="/healthcheck")

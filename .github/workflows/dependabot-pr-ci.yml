@@ -1,0 +1,283 @@
+name: CI/CD Security Scan
+
+on:
+  pull_request_target:
+        develop
+    types: [opened, synchronize, reopened]
+
+        main
+    branches:
+      - develop
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+        develop
+  scan:
+    name: Security Scan (Safe Dependabot)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout base code (safe)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Install security tools
+        run: |
+          pip install -r requirements-ci.txt
+          npm install -g gitleaks retire
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 🔐 Security Scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cache Python packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache npm packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create reports directory
+        run: mkdir -p security-reports/raw
+      main
+
+      - name: Install security tools
+        run: pip install -r requirements-ci.txt
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Semgrep Backend Scan
+        id: semgrep-backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend
+
+      - name: Run Semgrep Frontend Scan
+        id: semgrep-frontend
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src
+
+      - name: Run Bandit Scan
+        id: bandit
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json
+
+      - name: Run Gitleaks Scan
+        id: gitleaks
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json
+
+      develop
+      - name: 🐳 Run Trivy Scan
+        run: trivy fs --format json --output trivy-report.json . || true
+
+      - name: 📄 Organize reports
+        run: |
+          mkdir -p security-reports/raw
+          mv *.json security-reports/raw/
+
+      - name: 🧠 Generate Markdown Report and Detect Critical Issues
+        id: generate
+
+      - name: Run Retire.js Scan
+        id: retire
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json
+
+      - name: Run Trivy Scan
+        id: trivy
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json .
+
+      - name: Generate Security Report
+        id: generate-report
+      main
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md || true
+
+      develop
+          echo "CRITICAL_ISSUES=$(grep -q '❌ Critical' security-reports/summary_report.md && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: ☁️ Upload report artifacts
+        if: steps.generate.outputs.CRITICAL_ISSUES == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: security-reports/
+
+      - name: 🚨 Label PR if critical issues found
+        if: steps.generate.outputs.CRITICAL_ISSUES == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['security-review-needed']
+            });
+
+      - name: ❌ Auto-close PR if critical issues found
+        if: steps.generate.outputs.CRITICAL_ISSUES == 'true'
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/raw/
+
+      - name: Post or update PR comment with report (external script)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .github/scripts/post-pr-comment.js
+
+      - name: Fail on critical issues
+        id: critical-check
+        run: |
+          python - <<EOF
+          import json, sys, os
+          def has_critical(path):
+              if not os.path.exists(path):
+                  return False
+              try:
+                  data = json.load(open(path))
+              except:
+                  return False
+              def search(obj):
+                  if isinstance(obj, dict):
+                      for key in ['severity', 'issue_severity', 'Severity']:
+                          if obj.get(key, '').lower() == 'critical':
+                              return True
+                      return any(search(v) for v in obj.values())
+                  if isinstance(obj, list):
+                      return any(search(i) for i in obj)
+                  return False
+              return search(data)
+
+          files = [
+              'security-reports/raw/bandit-report.json',
+              'security-reports/raw/semgrep-backend.json',
+              'security-reports/raw/semgrep-frontend.json',
+              'security-reports/raw/gitleaks-report.json',
+              'security-reports/raw/retire-frontend.json',
+              'security-reports/raw/trivy-report.json',
+          ]
+
+          if any(has_critical(f) for f in files):
+              print("❌ Critical vulnerabilities found. Failing the workflow.")
+              sys.exit(1)
+          else:
+              print("✅ No critical vulnerabilities found.")
+          EOF
+
+      - name: Label and close PR on critical issues
+        if: steps.critical-check.conclusion == 'failure'
+ main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+      develop
+
+      - name: 🗨️ Post or update PR comment with report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const core = require('@actions/core');
+            const path = 'security-reports/summary_report.md';
+
+            if (!fs.existsSync(path)) {
+              core.warning("Summary report not found, skipping comment.");
+              return;
+            }
+
+            const body = fs.readFileSync(path, 'utf8');
+            const MAX_CHARS = 60000;
+            const truncated = body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body;
+
+            // Fetch all comments on the PR
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            // Find existing bot comment with the scan report header
+            const existingComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' && comment.body.startsWith('## 🔐 Security Scan Report')
+            );
+
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+       main

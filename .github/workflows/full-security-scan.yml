@@ -1,0 +1,114 @@
+name: Full Security Scan
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  full-scan:
+    runs-on: ubuntu-latest
+    name: 🔐 Full Security Scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Create reports directory
+        run: mkdir -p security-reports/raw
+
+      - name: Install Python and npm global tools
+        run: |
+          pip install -r requirements-ci.txt
+          npm install -g retire gitleaks
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Bandit scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+
+      - name: Run Semgrep React scan
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend-react.json frontend/src || true
+
+      # Add more scans here as needed...
+
+      - name: Generate summary report (MD)
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-frontend-react security-reports/raw/semgrep-frontend-react.json \
+            --output security-reports/summary_report.md
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-security-scan-reports
+          path: |
+            security-reports/summary_report.md
+            security-reports/raw/
+
+      - name: Post or update PR comment with full report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const MAX_CHARS = 60000;
+            const path = 'security-reports/summary_report.md';
+
+            if (!fs.existsSync(path)) {
+              console.log("No PR report found, skipping comment.");
+              return;
+            }
+
+            const content = fs.readFileSync(path, 'utf8');
+            const truncated = content.length > MAX_CHARS ? content.slice(0, MAX_CHARS) + "\n\n...truncated" : content;
+
+            // List existing comments on this PR
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            // Find previous comment by bot
+            const existingComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.startsWith('## 🔐 Full Security Scan Report')
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: `## 🔐 Full Security Scan Report\n\n${truncated}`,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🔐 Full Security Scan Report\n\n${truncated}`,
+              });
+            }

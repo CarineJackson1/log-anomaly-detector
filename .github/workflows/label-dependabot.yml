@@ -1,0 +1,23 @@
+name: Auto-label Dependabot PRs
+
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened, reopened]
+
+jobs:
+  label:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📝 Debug PR title
+        run: |
+          echo "Title: ${{ github.event.pull_request.title }}"
+
+      - name: 🏷️ Apply security labels
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            dependencies
+            security-scan-required
