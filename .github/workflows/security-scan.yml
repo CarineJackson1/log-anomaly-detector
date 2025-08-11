@@ -52,8 +52,54 @@ jobs:
           COMMENT_TITLE: "🔍 Fast Semgrep Scan Report"
         with:
           script: |
-            const run = require('./.github/scripts/post-pr-comment.js');
-            await run({ github, context, core });
+            const fs = require('fs');
+            const core = require('@actions/core');
+            const reportPath = process.env.REPORT_PATH;
+
+            if (!fs.existsSync(reportPath)) {
+              core.warning("Report file not found, skipping comment.");
+              return;
+            }
+
+            const data = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const results = data.results || [];
+
+            if (results.length === 0) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ${process.env.COMMENT_TITLE}\n\n✅ No issues found!`
+              });
+              return;
+            }
+
+            const severityCounts = results.reduce((acc, r) => {
+              const sev = (r.extra?.severity || 'unknown').toLowerCase();
+              acc[sev] = (acc[sev] || 0) + 1;
+              return acc;
+            }, {});
+
+            const severitySummary = Object.entries(severityCounts)
+              .map(([sev, count]) => `- ${sev.charAt(0).toUpperCase() + sev.slice(1)}: ${count}`)
+              .join('\n');
+
+            const topIssues = results.slice(0, 5).map(r => {
+              const file = r.path || 'unknown file';
+              const line = r.start?.line || '?';
+              const msg = r.extra?.message || 'No message';
+              const sev = r.extra?.severity || 'N/A';
+              return `- \`${file}:${line}\` — ${msg} _(Severity: ${sev})_`;
+            }).join('\n');
+
+            const body = `## ${process.env.COMMENT_TITLE}\n\n⚠️ Found ${results.length} issue(s):\n\n**By severity:**\n${severitySummary}\n\n**Top issues:**\n${topIssues}`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
 
   full-scan:
     if: github.event.pull_request.base.ref == 'main'  # Run only on PRs targeting main
@@ -61,11 +107,10 @@ jobs:
     name: 🔐 Full Security Scan
 
     steps:
-      # Your full scan steps here
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # ... full scan install and run steps
+      # ... your full scan install and run steps go here
 
       - name: Upload full scan report artifact
         uses: actions/upload-artifact@v4
@@ -80,6 +125,51 @@ jobs:
           COMMENT_TITLE: "🔐 Full Security Scan Report"
         with:
           script: |
-            // Your full scan comment script or call a js file like above
-            const run = require('./.github/scripts/post-pr-comment.js');
-            await run({ github, context, core });
+            const fs = require('fs');
+            const core = require('@actions/core');
+            const reportPath = process.env.REPORT_PATH;
+
+            if (!fs.existsSync(reportPath)) {
+              core.warning("Report file not found, skipping comment.");
+              return;
+            }
+
+            const data = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const results = data.results || [];
+
+            if (results.length === 0) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ${process.env.COMMENT_TITLE}\n\n✅ No issues found!`
+              });
+              return;
+            }
+
+            const severityCounts = results.reduce((acc, r) => {
+              const sev = (r.extra?.severity || 'unknown').toLowerCase();
+              acc[sev] = (acc[sev] || 0) + 1;
+              return acc;
+            }, {});
+
+            const severitySummary = Object.entries(severityCounts)
+              .map(([sev, count]) => `- ${sev.charAt(0).toUpperCase() + sev.slice(1)}: ${count}`)
+              .join('\n');
+
+            const topIssues = results.slice(0, 5).map(r => {
+              const file = r.path || 'unknown file';
+              const line = r.start?.line || '?';
+              const msg = r.extra?.message || 'No message';
+              const sev = r.extra?.severity || 'N/A';
+              return `- \`${file}:${line}\` — ${msg} _(Severity: ${sev})_`;
+            }).join('\n');
+
+            const body = `## ${process.env.COMMENT_TITLE}\n\n⚠️ Found ${results.length} issue(s):\n\n**By severity:**\n${severitySummary}\n\n**Top issues:**\n${topIssues}`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
