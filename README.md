@@ -268,6 +268,60 @@ Current Status (as of last PR):
 
 ---
 
+🛡 Role-Based Access Control (RBAC)
+Role-Based Middleware has been implemented to protect sensitive routes based on a user’s role.
+Each authenticated request includes the user’s role claim inside the JWT, which is checked before allowing access.
+
+Available Roles
+learner
+
+employer
+
+admin
+
+Middleware Decorator
+The @roles_required(*roles) decorator is used to secure routes.
+Example:
+
+python
+from utils.auth_decorators import roles_required
+
+@app.route('/admin/dashboard')
+@roles_required('admin')
+def admin_dashboard():
+    return success_response({"message": "Welcome, admin!"})
+Users without the required role(s) will receive 403 Forbidden.
+
+Example Protected Route
+python
+@app.route('/reports')
+@roles_required('admin', 'employer')
+def view_reports():
+    return success_response({"reports": []})
+In this example, both admin and employer can access the /reports endpoint.
+
+Testing RBAC with Postman
+Login with a user that has the required role (e.g., admin) and copy the access_token.
+
+Call the protected route with the header:
+
+Authorization: Bearer <JWT_TOKEN>
+Expected:
+
+If you have the role → 200 OK
+
+If you don’t have the role → 403 Forbidden
+
+Example Response (403):
+
+json
+{
+  "status": "error",
+  "message": "You do not have permission to access this resource."
+}
+
+---
+
 ## Project Documentation
 - [PRD in Notion](https://www.notion.so/codingtemple/AstroSkill-PRD-Participants-237d15b03f0a800eae76e41e8c09ffac?source=copy_link)
 - [Team workspace](https://app.slack.com/client/T1HU6FJFK/C096YMLG8A2)
