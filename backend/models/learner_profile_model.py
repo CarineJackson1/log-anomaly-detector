@@ -16,6 +16,8 @@ class LearnerProfile(db.Model):
     # Establishing relationships with other models
     user = relationship("User", back_populates="learner_profiles")
     enrollments = relationship("Enrollment", back_populates="learner", cascade="all, delete-orphan")
+    applications = relationship("Application", back_populates="learner", cascade="all, delete-orphan")
+    matchings = relationship("MatchingData", back_populates="learner", cascade="all, delete-orphan")
 
     # This method provides a string representation of the LearnerProfile instance
     def __repr__(self):
