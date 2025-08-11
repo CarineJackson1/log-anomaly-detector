@@ -5,16 +5,21 @@ on:
     branches: [develop]
     types: [opened, reopened]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   label:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+
     steps:
       - name: 📝 Debug PR title
-        run: |
-          echo "Title: ${{ github.event.pull_request.title }}"
+        run: echo "Dependabot PR Title: ${{ github.event.pull_request.title }}"
 
-      - name: 🏷️ Apply security labels
+      - name: 🏷️ Apply security and dependency labels
         uses: actions-ecosystem/action-add-labels@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

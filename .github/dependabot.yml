@@ -8,20 +8,20 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 5
     target-branch: develop
+    security-updates-only: false   # Allow all updates, not just security
+    ignore:
+      - dependency-name: "pytest"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
     reviewers:
       - CarineJackson1
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
     rebase-strategy: auto
-  ignore:
-  - dependency-name: "pytest"
-    update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-    
+
   # Node.js Frontend
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -32,12 +32,15 @@ updates:
       timezone: "America/Los_Angeles"
     open-pull-requests-limit: 5
     target-branch: develop
+    security-updates-only: false   # Allow all updates
+    ignore:
+      - dependency-name: "some-noisy-lib"
+        update-types: ["version-update:semver-patch"]
     reviewers:
       - CarineJackson1
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
@@ -53,12 +56,12 @@ updates:
       timezone: "America/Los_Angeles"
     open-pull-requests-limit: 3
     target-branch: develop
+    security-updates-only: false  # Allow all updates (actions tend to be critical)
     reviewers:
       - CarineJackson1
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
@@ -74,12 +77,12 @@ updates:
       timezone: "America/Los_Angeles"
     open-pull-requests-limit: 3
     target-branch: develop
+    security-updates-only: false
     reviewers:
       - CarineJackson1
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
     commit-message:
       prefix: "deps"
       include-scope: true
