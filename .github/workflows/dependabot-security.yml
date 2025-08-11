@@ -1,0 +1,71 @@
+name: Dependabot Security Scan
+
+on:
+  pull_request_target:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label-and-scan:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Auto-label Dependabot PRs
+      - name: 🏷️ Apply labels
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            dependencies
+            security-scan-required
+
+      # Checkout safe base branch (no untrusted code execution)
+      - name: 📥 Checkout base code (safe)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: 📁 Create reports directory
+        run: mkdir -p security-reports/raw
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Semgrep
+        run: pip install semgrep
+
+      - name: 🔍 Run Semgrep Scan
+        run: semgrep --config=auto --json --output=security-reports/raw/semgrep.json . || true
+
+      - name: 📤 Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-semgrep-report
+          path: security-reports/raw/semgrep.json
+
+      - name: 💬 Post concise PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = 'security-reports/raw/semgrep.json';
+            if (!fs.existsSync(report)) {
+              core.warning("No report found, skipping comment.");
+              return;
+            }
+            const findings = JSON.parse(fs.readFileSync(report, 'utf8')).results.length;
+            const summary = `## 🔍 Dependabot Security Scan\nFound **${findings}** potential issues.\nFull details are in the attached artifact.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary,
+            });
