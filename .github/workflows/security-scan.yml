@@ -4,7 +4,6 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, labeled]
     branches:
-      - main
       - develop
     paths-ignore:
       - '**.md'
@@ -16,7 +15,6 @@ permissions:
 
 jobs:
   fast-scan:
-    if: github.event.pull_request.base.ref == 'develop'  # Run only on PRs targeting develop
     runs-on: ubuntu-latest
     name: 🔍 Quick Semgrep Scan
 
@@ -53,84 +51,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
             const reportPath = process.env.REPORT_PATH;
 
             if (!fs.existsSync(reportPath)) {
-              core.warning("Report file not found, skipping comment.");
-              return;
-            }
-
-            const data = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-            const results = data.results || [];
-
-            if (results.length === 0) {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## ${process.env.COMMENT_TITLE}\n\n✅ No issues found!`
-              });
-              return;
-            }
-
-            const severityCounts = results.reduce((acc, r) => {
-              const sev = (r.extra?.severity || 'unknown').toLowerCase();
-              acc[sev] = (acc[sev] || 0) + 1;
-              return acc;
-            }, {});
-
-            const severitySummary = Object.entries(severityCounts)
-              .map(([sev, count]) => `- ${sev.charAt(0).toUpperCase() + sev.slice(1)}: ${count}`)
-              .join('\n');
-
-            const topIssues = results.slice(0, 5).map(r => {
-              const file = r.path || 'unknown file';
-              const line = r.start?.line || '?';
-              const msg = r.extra?.message || 'No message';
-              const sev = r.extra?.severity || 'N/A';
-              return `- \`${file}:${line}\` — ${msg} _(Severity: ${sev})_`;
-            }).join('\n');
-
-            const body = `## ${process.env.COMMENT_TITLE}\n\n⚠️ Found ${results.length} issue(s):\n\n**By severity:**\n${severitySummary}\n\n**Top issues:**\n${topIssues}`;
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body,
-            });
-
-  full-scan:
-    if: github.event.pull_request.base.ref == 'main'  # Run only on PRs targeting main
-    runs-on: ubuntu-latest
-    name: 🔐 Full Security Scan
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # ... your full scan install and run steps go here
-
-      - name: Upload full scan report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-scan-report
-          path: path/to/full-scan-report.json
-
-      - name: Post or update PR comment with full scan summary
-        uses: actions/github-script@v7
-        env:
-          REPORT_PATH: path/to/full-scan-report.json
-          COMMENT_TITLE: "🔐 Full Security Scan Report"
-        with:
-          script: |
-            const fs = require('fs');
-            const core = require('@actions/core');
-            const reportPath = process.env.REPORT_PATH;
-
-            if (!fs.existsSync(reportPath)) {
-              core.warning("Report file not found, skipping comment.");
+              console.warn("Report file not found, skipping comment.");
               return;
             }
 

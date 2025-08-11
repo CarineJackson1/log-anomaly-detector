@@ -12,9 +12,10 @@ class Employer(db.Model):
     interest_tags = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Establishing a relationship with the User model
+
+    # Establishing relationships with other models
     user = relationship("User", back_populates="employer")
+    job_postings = relationship("JobPosting", back_populates="employer", cascade="all, delete-orphan")
     
     # This method provides a string representation of the Employer instance
     def __repr__(self):

@@ -82,23 +82,23 @@ jobs:
 
       - name: Run Semgrep Backend Scan
         id: semgrep-backend
-        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
 
       - name: Run Semgrep Frontend Scan
         id: semgrep-frontend
-        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src || true
 
       - name: Run Bandit Scan
         id: bandit
-        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
       - name: Run Gitleaks Scan
         id: gitleaks
-        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
 
       - name: Run Retire.js Scan
         id: retire
-        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
       - name: Run Trivy Scan
         id: trivy
@@ -126,8 +126,12 @@ jobs:
         run: |
           echo "CRITICAL_ISSUES=$(grep -q '❌ Critical' security-reports/summary_report.md && echo true || echo false)" >> $GITHUB_OUTPUT
 
-      - name: Upload report artifacts
+      - name: Fail if critical issues found
         if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
+        run: exit 1
+
+      - name: Upload report artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-results
@@ -157,14 +161,6 @@ jobs:
               state: 'closed'
             });
 
-      - name: Upload reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-scan-reports
-          path: |
-            security-reports/summary_report.md
-            security-reports/raw/
-
       - name: Post or update PR comment with report
         uses: actions/github-script@v7
         with:
@@ -173,7 +169,7 @@ jobs:
             const path = 'security-reports/summary_report.md';
 
             if (!fs.existsSync(path)) {
-              core.warning("Summary report not found, skipping comment.");
+              console.warn("Summary report not found, skipping comment.");
               return;
             }
 
