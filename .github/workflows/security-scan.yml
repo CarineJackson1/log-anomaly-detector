@@ -53,11 +53,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
             const reportPath = process.env.REPORT_PATH;
 
             if (!fs.existsSync(reportPath)) {
-              core.warning("Report file not found, skipping comment.");
+              console.warn("Report file not found, skipping comment.");
               return;
             }
 
@@ -126,11 +125,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
             const reportPath = process.env.REPORT_PATH;
 
             if (!fs.existsSync(reportPath)) {
-              core.warning("Report file not found, skipping comment.");
+              console.warn("Report file not found, skipping comment.");
               return;
             }
 
