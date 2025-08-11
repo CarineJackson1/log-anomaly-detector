@@ -24,6 +24,37 @@ AstroSkill LMS Connector is a full-stack platform that bridges the gap between M
 
 ---
 
+## 📄 New Schemas & Models
+
+This update introduces three new backend schemas with Marshmallow validation for serialization and deserialization.
+
+### **LearnerProfileSchema**
+- **Purpose:** Stores learner skills and resume URL.
+- **Key Fields:**
+  - `user_id` *(required, int)*
+  - `skills` *(required, list of strings, unique, case-insensitive)*
+  - `resume_url` *(required, valid HTTP/HTTPS URL)*
+- **Validation:** Prevents blank skills and duplicate entries (case-insensitive).
+- **Model:** `LearnerProfile` — auto-created via `@post_load`.
+
+### **EmployerSchema**
+- **Purpose:** Stores employer company details and interest tags.
+- **Key Fields:**
+  - `user_id` *(required, int)*
+  - `company_name` *(required, string, 1–500 chars)*
+  - `interest_tags` *(optional, list of unique strings)*
+- **Validation:** Prevents blank tags, trims whitespace, enforces uniqueness.
+
+### **CourseProgressSchema**
+- **Purpose:** Tracks learner progress through courses.
+- **Key Fields:**
+  - `user_id` *(required, int)*
+  - `course_id` *(required, int)*
+  - `completion_status` *(enum: NOT_STARTED, IN_PROGRESS, COMPLETED)*
+- **Validation:** Enum must match defined `CompletionStatus` values.
+
+---
+
 ## Getting Started
 
 ### Backend Setup
