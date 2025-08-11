@@ -169,7 +169,7 @@ jobs:
             const path = 'security-reports/summary_report.md';
 
             if (!fs.existsSync(path)) {
-              core.warning("Summary report not found, skipping comment.");
+              console.warn("Summary report not found, skipping comment.");
               return;
             }
 
