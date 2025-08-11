@@ -12,9 +12,12 @@ class LearnerProfile(db.Model):
     resume_url = db.Column(db.String(500), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Establishing a relationship with the User model
+
+    # Establishing relationships with other models
     user = relationship("User", back_populates="learner_profiles")
+    enrollments = relationship("Enrollment", back_populates="learner", cascade="all, delete-orphan")
+    applications = relationship("Application", back_populates="learner", cascade="all, delete-orphan")
+    matchings = relationship("MatchingData", back_populates="learner", cascade="all, delete-orphan")
 
     # This method provides a string representation of the LearnerProfile instance
     def __repr__(self):

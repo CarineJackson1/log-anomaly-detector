@@ -60,53 +60,66 @@ This update introduces three new backend schemas with Marshmallow validation for
 ### Backend Setup
 
 1. **Create and Activate Virtual Environment**
-   ```bash
    python -m venv venv
    venv\Scripts\activate      # Windows
    source venv/bin/activate   # Mac/Linux
 
 2. Upgrade pip (Recommended)
 
-   bash
-   Copy
-   Edit
    python -m pip install --upgrade pip
 
 3. Install Dependencies
 
-   bash
-   Copy
-   Edit
    pip install -r requirements.txt
 
 4. Setup Environment Variables
 
-   bash
-   Copy
-   Edit
    cp .env.example .env
 
 5. Initialize Database and Run Migrations
 
-   bash
-   Copy
-   Edit
    alembic upgrade head
 
 6. Run the Backend
 
-   bash
-   Copy
-   Edit
    python app.py
 
 7. Verify Healthcheck
 
    - General Healthcheck: [http://localhost:5000/healthcheck/](http://localhost:5000/healthcheck/)
    - Database Tables: [http://localhost:5000/db-check](http://localhost:5000/db-check/)  
-     (should display `["alembic_version", "users"]` after migration)
+     (should display `[
+        "alembic_version",
+        "applications",
+        "course_progress",
+        "courses",
+        "employers",
+        "enrollments",
+        "job_postings",
+        "learner_profiles",
+        "matching_data",
+        "users"
+      ]` after migration)
+   
    - Auth Routes Status: [http://localhost:5000/auth/status](http://localhost:5000/auth/status)  
-     (should return `{"success": true, "data": {"auth_status": "ready"}, "message": "Authentication routes are live and responding."}`)
+     (should return `{"success": true, 
+                      "data": {"auth_status": "ready"},  
+                      "message": "Authentication routes are live and responding."}`)
+
+---
+
+📂 Core Database Tables
+Table Name	        Purpose
+users	              Stores authentication credentials and role info for all platform users.
+learner_profiles	  Links to users and contains skills, resumes, and learner-specific data.
+courses	            Holds course metadata (title, description, source). Can be from Moodle or internal.
+enrollments	        Tracks learner participation in courses, progress, and status.
+course_progress	    Fine-grained progress tracking for each learner per course.
+employers	          Employer organization details.
+job_postings	      Job listings from aerospace employers.
+applications	      Applications learners submit for job postings.
+matching_data	      AI or logic-generated matches between learners and job postings.
+alembic_version	    Tracks Alembic migration state.
 
 ---
 
