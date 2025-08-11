@@ -9,9 +9,9 @@ class UserSchema(Schema):
     email = fields.Email(required=True, validate=validate.Length(max=120))
     password = fields.Str(required=True, load_only=True, validate=validate.Length(min=6))
     role = fields.Str(
-        required=False,
-        validate=validate.OneOf([role.value for role in UserRole]),
-        load_default=UserRole.LEARNER.value
+            required=False,
+            validate=validate.OneOf([role.value for role in UserRole]),
+            load_default=UserRole.LEARNER.value
     )
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)

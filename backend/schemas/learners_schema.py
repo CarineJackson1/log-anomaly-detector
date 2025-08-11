@@ -22,7 +22,7 @@ class LearnerProfileSchema(Schema):
     updated_at = fields.DateTime(dump_only=True)
     
     @validates("skills")
-    def validate_skills(self, value):
+    def validate_skills(self, value, **kwargs):
         # all must be strings
         if any(not isinstance(s, str) for s in value):
             raise ValidationError("All skills must be strings.")
