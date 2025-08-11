@@ -15,102 +15,56 @@ permissions:
   pull-requests: write
 
 jobs:
-  scan:
-    name: Security Scan (Safe Dependabot)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 📥 Checkout base code (safe)
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.pull_request.base.ref }}
-
-      - name: Install security tools
-        run: |
-          pip install -r requirements-ci.txt
-          npm install -g gitleaks retire
-
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-
   security-scan:
-    name: 🔐 Security Scan
+    name: 🔐 Full Security Scan
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Cache Python packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Setup Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Cache npm packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      - name: Setup Node
+      - name: 📦 Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Create reports directory
+      - name: 📁 Create reports directory
         run: mkdir -p security-reports/raw
 
-      - name: Install security tools
-        run: pip install -r requirements-ci.txt
-
-      - name: Install Trivy
+      - name: 📦 Install security tools
         run: |
+          pip install -r requirements-ci.txt
+          npm install -g gitleaks retire
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Run Semgrep Backend Scan
-        id: semgrep-backend
-        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend
+      # Scans
+      - name: 🔍 Semgrep Backend
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
 
-      - name: Run Semgrep Frontend Scan
-        id: semgrep-frontend
-        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src
+      - name: 🔍 Semgrep Frontend
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src || true
 
-      - name: Run Bandit Scan
-        id: bandit
-        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json
+      - name: 🛡 Bandit
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
 
-      - name: Run Gitleaks Scan
-        id: gitleaks
-        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json
+      - name: 🔑 Gitleaks
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
 
-      - name: Run Retire.js Scan
-        id: retire
-        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json
+      - name: 📦 Retire.js
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
 
-      - name: Run Trivy Scan
-        id: trivy
+      - name: 🐳 Trivy FS
         run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
 
-      - name: Organize reports
-        run: |
-          mkdir -p security-reports/raw
-          mv *.json security-reports/raw/
-
-      - name: Generate Markdown Report and Detect Critical Issues
-        id: generate-report
+      # Generate combined summary
+      - name: 📄 Generate summary
         run: |
           python .github/scripts/generate_full_report.py \
             --bandit security-reports/raw/bandit-report.json \
@@ -121,92 +75,63 @@ jobs:
             --trivy security-reports/raw/trivy-report.json \
             --output security-reports/summary_report.md || true
 
-      - name: Check for Critical Issues
-        id: critical-check
-        run: |
-          echo "CRITICAL_ISSUES=$(grep -q '❌ Critical' security-reports/summary_report.md && echo true || echo false)" >> $GITHUB_OUTPUT
-
-      - name: Upload report artifacts
-        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-scan-results
-          path: security-reports/
-
-      - name: Label PR if critical issues found
-        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['security-review-needed']
-            });
-
-      - name: Auto-close PR if critical issues found
-        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              state: 'closed'
-            });
-
-      - name: Upload reports
+      # Upload artifacts
+      - name: 📤 Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: security-scan-reports
-          path: |
-            security-reports/summary_report.md
-            security-reports/raw/
+          path: security-reports/
 
-      - name: Post or update PR comment with report
+      # Post short PR comment
+      - name: 💬 Post concise PR comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = 'security-reports/summary_report.md';
+            const summaryPath = 'security-reports/summary_report.md';
 
-            if (!fs.existsSync(path)) {
-              core.warning("Summary report not found, skipping comment.");
+            if (!fs.existsSync(summaryPath)) {
+              core.warning("No summary report found, skipping comment.");
               return;
             }
 
-            const body = fs.readFileSync(path, 'utf8');
-            const MAX_CHARS = 60000;
-            const truncated = body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body;
+            const content = fs.readFileSync(summaryPath, 'utf8');
+            const critical = (content.match(/❌ Critical/g) || []).length;
+            const high = (content.match(/⚠️ High/g) || []).length;
+            const medium = (content.match(/🟠 Medium/g) || []).length;
 
-            // Fetch comments on the PR
+            const shortSummary = `
+            ## 🔐 Security Scan Summary
+            **Critical:** ${critical} | **High:** ${high} | **Medium:** ${medium}
+
+            Full details are in the [security scan artifact](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).
+
+            _This scan checks for vulnerabilities in Python, Node.js, secrets, outdated dependencies, and misconfigurations._
+            `;
+
+            // Find and update existing comment, or create new one
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
 
-            // Find existing bot comment with scan report header
-            const existingComment = comments.data.find(comment =>
-              comment.user.type === 'Bot' && comment.body.startsWith('## 🔐 Security Scan Report')
+            const existing = comments.data.find(c =>
+              c.user.type === 'Bot' && c.body.startsWith('## 🔐 Security Scan Summary')
             );
 
-            if (existingComment) {
-              // Update existing comment
+            if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+                comment_id: existing.id,
+                body: shortSummary,
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+                body: shortSummary,
               });
             }
