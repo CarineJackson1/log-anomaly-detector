@@ -1,0 +1,85 @@
+name: Security Scans
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  fast-scan:
+    if: github.event.pull_request.base.ref == 'develop'  # Run only on PRs targeting develop
+    runs-on: ubuntu-latest
+    name: 🔍 Quick Semgrep Scan
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Semgrep
+        run: pip install semgrep
+
+      - name: 📁 Create report folder
+        run: mkdir -p security-reports/raw
+
+      - name: 🔍 Run Semgrep Scan
+        run: semgrep --config=auto --json --output=security-reports/raw/semgrep.json . || true
+
+      - name: ☁️ Upload Semgrep report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: security-reports/raw/semgrep.json
+
+      - name: 💬 Post or update PR comment with Semgrep summary
+        if: github.actor != 'dependabot[bot]'
+        uses: actions/github-script@v7
+        env:
+          REPORT_PATH: security-reports/raw/semgrep.json
+          COMMENT_TITLE: "🔍 Fast Semgrep Scan Report"
+        with:
+          script: |
+            const run = require('./.github/scripts/post-pr-comment.js');
+            await run({ github, context, core });
+
+  full-scan:
+    if: github.event.pull_request.base.ref == 'main'  # Run only on PRs targeting main
+    runs-on: ubuntu-latest
+    name: 🔐 Full Security Scan
+
+    steps:
+      # Your full scan steps here
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ... full scan install and run steps
+
+      - name: Upload full scan report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-scan-report
+          path: path/to/full-scan-report.json
+
+      - name: Post or update PR comment with full scan summary
+        uses: actions/github-script@v7
+        env:
+          REPORT_PATH: path/to/full-scan-report.json
+          COMMENT_TITLE: "🔐 Full Security Scan Report"
+        with:
+          script: |
+            // Your full scan comment script or call a js file like above
+            const run = require('./.github/scripts/post-pr-comment.js');
+            await run({ github, context, core });
