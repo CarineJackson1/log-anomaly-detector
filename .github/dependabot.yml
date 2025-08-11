@@ -13,15 +13,17 @@ updates:
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - dependency-name: "pytest"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      - update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include-scope: true
     rebase-strategy: auto
-  ignore:
-  - dependency-name: "pytest"
-    update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-    
+
   # Node.js Frontend
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -37,13 +39,16 @@ updates:
       - sajanamhr21
     assignees:
       - CarineJackson1
-    security-updates-only: true
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps"
       include-scope: true
     rebase-strategy: auto
 
-  # GitHub Actions
+  # GitHub Actions (security only)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -64,7 +69,7 @@ updates:
       include-scope: true
     rebase-strategy: auto
 
-  # Docker
+  # Docker (security only)
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
