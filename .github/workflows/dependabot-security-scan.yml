@@ -1,0 +1,119 @@
+name: Dependabot Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label-and-scan:
+    if: github.actor == 'dependabot[bot]' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏷️ Apply labels (only on PR events)
+        if: github.event_name == 'pull_request'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            dependencies
+            security-scan-required
+
+      - name: 📥 Checkout base code (safe)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request?.base.ref || 'main' }}
+
+      - name: 📁 Create reports directory
+        run: mkdir -p security-reports/raw
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Semgrep
+        run: pip install semgrep
+
+      - name: 🔍 Run Semgrep Scan
+        run: semgrep --config=auto --json --output=security-reports/raw/semgrep.json . || true
+
+      - name: 📤 Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependabot-semgrep-report
+          path: security-reports/raw/semgrep.json
+
+      - name: 💬 Post concise PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('security-reports/raw/semgrep.json')) {
+              core.warning("No report found, skipping comment.");
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync('security-reports/raw/semgrep.json', 'utf8'));
+            const findings = data.results?.length || 0;
+            const summary = `## 🔍 Dependabot Security Scan\nFound **${findings}** potential issues.\nFull details are in the attached artifact.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary,
+            });
+
+      - name: 📝 Create or update daily scan issue
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('security-reports/raw/semgrep.json')) {
+              core.warning("No report found, skipping issue creation.");
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync('security-reports/raw/semgrep.json', 'utf8'));
+            const findings = data.results?.length || 0;
+            const issueTitle = 'Daily Dependabot Security Scan Report';
+            const body = `## 🔍 Daily Dependabot Security Scan\nFound **${findings}** potential issues.\nFull details are in the attached artifact.`;
+
+            // Check for existing open issue with this title and label
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security-scan-required',
+            });
+
+            const existingIssue = issues.find(issue => issue.title === issueTitle);
+
+            if (existingIssue) {
+              // Update the existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: body,
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const { data: newIssue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: body,
+                labels: ['security-scan-required'],
+              });
+              console.log(`Created new issue #${newIssue.number}`);
+            }
