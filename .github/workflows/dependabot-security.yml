@@ -55,7 +55,6 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
             const report = 'security-reports/raw/semgrep.json';
             if (!fs.existsSync(report)) {
               core.warning("No report found, skipping comment.");
