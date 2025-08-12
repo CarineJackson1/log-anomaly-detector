@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   label-and-scan:
-    # Temporarily disable actor check for testing
+    # Uncomment this to only run for Dependabot:
     # if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
 
@@ -20,7 +20,7 @@ jobs:
       - name: 🏷️ Apply labels
         uses: actions-ecosystem/action-add-labels@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: |
             dependencies
             security-scan-required
@@ -55,12 +55,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = 'security-reports/raw/semgrep.json';
-            if (!fs.existsSync(report)) {
-              console.warn("No report found, skipping comment.");
+            if (!fs.existsSync('security-reports/raw/semgrep.json')) {
+              core.warning("No report found, skipping comment.");
               return;
             }
-            const findings = JSON.parse(fs.readFileSync(report, 'utf8')).results.length;
+            const data = JSON.parse(fs.readFileSync('security-reports/raw/semgrep.json', 'utf8'));
+            const findings = data.results?.length || 0;
             const summary = `## 🔍 Dependabot Security Scan\nFound **${findings}** potential issues.\nFull details are in the attached artifact.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
