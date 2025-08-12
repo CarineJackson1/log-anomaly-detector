@@ -57,7 +57,7 @@ jobs:
             const fs = require('fs');
             const report = 'security-reports/raw/semgrep.json';
             if (!fs.existsSync(report)) {
-              core.warning("No report found, skipping comment.");
+              console.warn("No report found, skipping comment.");
               return;
             }
             const findings = JSON.parse(fs.readFileSync(report, 'utf8')).results.length;
