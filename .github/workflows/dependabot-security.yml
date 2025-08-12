@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Auto-label Dependabot PRs
       - name: 🏷️ Apply labels
         uses: actions-ecosystem/action-add-labels@v1
         with:
@@ -25,7 +24,6 @@ jobs:
             dependencies
             security-scan-required
 
-      # Checkout safe base branch (no untrusted code execution)
       - name: 📥 Checkout base code (safe)
         uses: actions/checkout@v3
         with:
@@ -53,16 +51,25 @@ jobs:
 
       - name: 💬 Post concise PR comment
         uses: actions/github-script@v7
+        env:
+          MAX_ISSUES: 10
         with:
           script: |
+            const core = require('@actions/core');
             const fs = require('fs');
-            const report = 'security-reports/raw/semgrep.json';
-            if (!fs.existsSync(report)) {
+            const reportPath = 'security-reports/raw/semgrep.json';
+            if (!fs.existsSync(reportPath)) {
               core.warning("No report found, skipping comment.");
               return;
             }
-            const findings = JSON.parse(fs.readFileSync(report, 'utf8')).results.length;
-            const summary = `## 🔍 Dependabot Security Scan\nFound **${findings}** potential issues.\nFull details are in the attached artifact.`;
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            const issues = report.results || [];
+            const count = issues.length;
+            const maxDisplay = parseInt(process.env.MAX_ISSUES, 10) || 10;
+            const displayedIssues = issues.slice(0, maxDisplay)
+              .map(i => `- ${i.extra?.message || "No message"} (Severity: ${i.extra?.severity || "N/A"})`)
+              .join('\n');
+            const summary = `## 🔍 Dependabot Security Scan\nFound **${count}** potential issue(s).\n\nTop issues:\n${displayedIssues}${count > maxDisplay ? `\n...and ${count - maxDisplay} more.` : ''}\n\nFull details in the attached artifact.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

@@ -1,10 +1,14 @@
-name: Security Scans
+name: CI/CD Security Scan
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize, labeled]
+  pull_request_target:
     branches:
       - develop
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
     paths-ignore:
       - '**.md'
 
@@ -14,86 +18,137 @@ permissions:
   pull-requests: write
 
 jobs:
-  fast-scan:
+  security-scan:
+    name: 🔐 Security Scan
     runs-on: ubuntu-latest
-    name: 🔍 Quick Semgrep Scan
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout base branch (safe)
         uses: actions/checkout@v3
-
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          ref: ${{ github.event.pull_request.base.ref }}
 
-      - name: 📦 Install Semgrep
-        run: pip install semgrep
+      - name: Install security tools
+        run: |
+          pip install -r requirements-ci.txt
+          npm install -g gitleaks retire
 
-      - name: 📁 Create report folder
-        run: mkdir -p security-reports/raw
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: 🔍 Run Semgrep Scan
-        run: semgrep --config=auto --json --output=security-reports/raw/semgrep.json . || true
+      - name: Run Semgrep Backend Scan
+        run: semgrep --config=p/ci/python --json --output=security-reports/raw/semgrep-backend.json backend || true
 
-      - name: ☁️ Upload Semgrep report artifact
+      - name: Run Semgrep Frontend Scan
+        run: semgrep --config=p/react --json --output=security-reports/raw/semgrep-frontend.json frontend/src || true
+
+      - name: Run Bandit Scan
+        run: bandit -r backend -f json -o security-reports/raw/bandit-report.json || true
+
+      - name: Run Gitleaks Scan
+        run: gitleaks detect --source . --report-format json --report-path security-reports/raw/gitleaks-report.json || true
+
+      - name: Run Retire.js Scan
+        run: retire --path frontend --outputformat json --outputpath security-reports/raw/retire-frontend.json || true
+
+      - name: Run Trivy Scan
+        run: trivy fs --format json --output security-reports/raw/trivy-report.json . || true
+
+      - name: Organize reports
+        run: |
+          mkdir -p security-reports/raw
+          mv *.json security-reports/raw/ 2>/dev/null || true
+
+      - name: Generate Markdown Report and Detect Critical Issues
+        run: |
+          python .github/scripts/generate_full_report.py \
+            --bandit security-reports/raw/bandit-report.json \
+            --semgrep-backend security-reports/raw/semgrep-backend.json \
+            --semgrep-frontend security-reports/raw/semgrep-frontend.json \
+            --gitleaks security-reports/raw/gitleaks-report.json \
+            --retire security-reports/raw/retire-frontend.json \
+            --trivy security-reports/raw/trivy-report.json \
+            --output security-reports/summary_report.md || true
+
+      - name: Check for Critical Issues
+        id: critical-check
+        run: |
+          echo "CRITICAL_ISSUES=$(grep -q '❌ Critical' security-reports/summary_report.md && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Fail if critical issues found
+        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
+        run: exit 1
+
+      - name: Upload report artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: semgrep-report
-          path: security-reports/raw/semgrep.json
+          name: security-scan-results
+          path: security-reports/
 
-      - name: 💬 Post or update PR comment with Semgrep summary
-        if: github.actor != 'dependabot[bot]'
+      - name: Label PR if critical issues found
+        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
         uses: actions/github-script@v7
-        env:
-          REPORT_PATH: security-reports/raw/semgrep.json
-          COMMENT_TITLE: "🔍 Fast Semgrep Scan Report"
         with:
           script: |
-            const fs = require('fs');
-            const reportPath = process.env.REPORT_PATH;
-
-            if (!fs.existsSync(reportPath)) {
-              console.warn("Report file not found, skipping comment.");
-              return;
-            }
-
-            const data = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-            const results = data.results || [];
-
-            if (results.length === 0) {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## ${process.env.COMMENT_TITLE}\n\n✅ No issues found!`
-              });
-              return;
-            }
-
-            const severityCounts = results.reduce((acc, r) => {
-              const sev = (r.extra?.severity || 'unknown').toLowerCase();
-              acc[sev] = (acc[sev] || 0) + 1;
-              return acc;
-            }, {});
-
-            const severitySummary = Object.entries(severityCounts)
-              .map(([sev, count]) => `- ${sev.charAt(0).toUpperCase() + sev.slice(1)}: ${count}`)
-              .join('\n');
-
-            const topIssues = results.slice(0, 5).map(r => {
-              const file = r.path || 'unknown file';
-              const line = r.start?.line || '?';
-              const msg = r.extra?.message || 'No message';
-              const sev = r.extra?.severity || 'N/A';
-              return `- \`${file}:${line}\` — ${msg} _(Severity: ${sev})_`;
-            }).join('\n');
-
-            const body = `## ${process.env.COMMENT_TITLE}\n\n⚠️ Found ${results.length} issue(s):\n\n**By severity:**\n${severitySummary}\n\n**Top issues:**\n${topIssues}`;
-
-            await github.rest.issues.createComment({
+            await github.rest.issues.addLabels({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body,
+              labels: ['security-review-needed']
             });
+
+      - name: Auto-close PR if critical issues found
+        if: steps.critical-check.outputs.CRITICAL_ISSUES == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              state: 'closed'
+            });
+
+      - name: Post or update PR comment with report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'security-reports/summary_report.md';
+
+            if (!fs.existsSync(path)) {
+              core.warning("Summary report not found, skipping comment.");
+              return;
+            }
+
+            const body = fs.readFileSync(path, 'utf8');
+            const MAX_CHARS = 60000;
+            const truncated = body.length > MAX_CHARS ? body.slice(0, MAX_CHARS) + "\n\n...truncated" : body;
+
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' && comment.body.startsWith('## 🔐 Security Scan Report')
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `## 🔐 Security Scan Report\n\n${truncated}`,
+              });
+            }
