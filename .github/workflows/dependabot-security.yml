@@ -1,7 +1,7 @@
 name: Dependabot Security Scan
 
 on:
-  pull_request_target:
+  pull_request:
     branches: [develop, main]
     types: [opened, synchronize, reopened]
 
@@ -55,10 +55,9 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const core = require('@actions/core');
             const report = 'security-reports/raw/semgrep.json';
             if (!fs.existsSync(report)) {
-              core.warning("No report found, skipping comment.");
+              console.warn("No report found, skipping comment.");
               return;
             }
             const findings = JSON.parse(fs.readFileSync(report, 'utf8')).results.length;
