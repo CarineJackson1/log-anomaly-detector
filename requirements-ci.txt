@@ -1,4 +1,0 @@
-semgrep
-bandit
-reportlab
-beautifulsoup4
