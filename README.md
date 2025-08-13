@@ -100,4 +100,4 @@ MIT License
 
 👩‍💻 Author
 
-Carine Jackson – LinkedIn | GitHub
+Carine Jackson [LinkedIn](https://www.linkedin.com/in/carinejackson)[GitHub](https://github.com/CarineJackson1)
