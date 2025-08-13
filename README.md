@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-1f77b4?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)
 
 ---
 
@@ -28,7 +29,6 @@ It helps **detect anomalies**, such as failed logins and suspicious IP activity,
 ---
 
 ## 📂 Project Structure
-
 log-analyzer/
 ├── log_analyzer_advanced.py   # Main Python script
 ├── data/
@@ -59,30 +59,30 @@ log-analyzer/
 git clone https://github.com/CarineJackson1/log-anomaly-detector.git
 cd log-analyzer
 
-	2.	Create a virtual environment:
-
 python3 -m venv venv
 source venv/bin/activate       # macOS/Linux
 venv\Scripts\activate          # Windows
 
-	3.	Install dependencies:
-
 pip install -r requirements.txt
 ```
 
-⸻
-Run the script:
 
 ```bash
 python3 log_analyzer_advanced.py
-
 ```
 ⸻
 
 🚀 Usage
-	•	Auto-generate synthetic log entries for stress-testing
-	•	Integrate firewall/IDS logs for extended SOC coverage
-	
+
+Run the script:
+
+```bash
+python3 log_analyzer_advanced.py
+```
+•	Combined logs are saved to ./data/combined_logs_<timestamp>.csv
+•	Anomalies are visualized in an interactive Plotly chart
+
+⸻
 
 💡 Future Enhancements
 	•	Auto-generate synthetic log entries for stress-testing
