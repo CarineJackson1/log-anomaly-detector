@@ -1,0 +1,7 @@
+timestamp,host,event_type,message,source
+Aug 13 13:00:01,host1,sshd[12345],Failed password for invalid user test from 192.168.1.10 port 22 ssh2,Linux Syslog
+Aug 13 13:01:15,host2,sshd[12346],Accepted password for user1 from 192.168.1.11 port 22 ssh2,Linux Syslog
+2025-08-13 13:00:01,WIN-PC-01,Failure Audit,Failed login attempt for UserA,Windows Event Log
+2025-08-13 13:01:15,WIN-PC-02,Success Audit,UserB logged in successfully,Windows Event Log
+13/Aug/2025:13:00:01 +0000,192.168.1.20,web_request,GET /index.html HTTP/1.1,Apache Web Log
+13/Aug/2025:13:01:15 +0000,192.168.1.21,web_request,POST /login HTTP/1.1,Apache Web Log

@@ -1,0 +1,3 @@
+TimeGenerated,ComputerName,EventType,Message
+2025-08-13 13:00:01,WIN-PC-01,Failure Audit,Failed login attempt for UserA
+2025-08-13 13:01:15,WIN-PC-02,Success Audit,UserB logged in successfully
