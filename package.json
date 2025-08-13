@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "@tanstack/react-query": "^5.84.2",
-    "mysql2": "^3.14.1",
-    "pg": "^8.16.2"
-  }
-}
