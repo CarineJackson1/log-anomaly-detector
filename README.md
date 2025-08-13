@@ -1,8 +1,3 @@
-Absolutely! We can make your GitHub README for Log Analyzer much more aesthetic, modern, and portfolio-ready by using badges, emojis, sections with clear hierarchy, and a visually clean layout. Here’s a polished version:
-
-⸻
-
-
 # 🖥 Log Analyzer
 
 ![Python](https://img.shields.io/badge/Python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
@@ -73,14 +68,14 @@ venv\Scripts\activate          # Windows
 	3.	Install dependencies:
 
 pip install -r requirements.txt
-```
+
 
 ⸻
 
-🚀 Usage
-
 python3 log_analyzer_advanced.py
+```
 
+🚀 Usage
 	•	Combined logs saved to ./data/combined_logs_<timestamp>.csv
 	•	Anomalies visualized in an interactive Plotly chart
 
@@ -91,7 +86,6 @@ python3 log_analyzer_advanced.py
 	•	Integrate firewall/IDS logs for extended SOC coverage
 	•	Export anomaly reports as PDF/HTML
 	•	Build real-time dashboards using Dash/Plotly
-
 ⸻
 
 📄 License
