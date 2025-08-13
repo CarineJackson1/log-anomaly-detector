@@ -68,19 +68,21 @@ venv\Scripts\activate          # Windows
 	3.	Install dependencies:
 
 pip install -r requirements.txt
-
-
-⸻
-
-python3 log_analyzer_advanced.py
 ```
 
+⸻
+Run the script:
+
+```bash
+python3 log_analyzer_advanced.py
+
+```
+⸻
 
 🚀 Usage
-	•	Combined logs saved to ./data/combined_logs_<timestamp>.csv
-	•	Anomalies visualized in an interactive Plotly chart
-
-⸻
+	•	Auto-generate synthetic log entries for stress-testing
+	•	Integrate firewall/IDS logs for extended SOC coverage
+	
 
 💡 Future Enhancements
 	•	Auto-generate synthetic log entries for stress-testing
