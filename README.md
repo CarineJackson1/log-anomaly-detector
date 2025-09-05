@@ -200,28 +200,6 @@ status = "🚨 VERY SUSPICIOUS" if count > 5 else "⚠️ Watch this one" if cou
 
 ---
 
-## 📈 **Your Learning Path**
-
-### **Phase 1: Master This Tool** (Week 1)
-- Run with sample data
-- Understand each function  
-- Modify suspicious word list
-- Create your own test logs
-
-### **Phase 2: Enhance It** (Week 2-3)
-- Add new detection rules
-- Improve the reporting
-- Handle different log formats
-- Add error handling
-
-### **Phase 3: Portfolio Ready** (Week 4)
-- Create demo video
-- Write detailed documentation  
-- Add to GitHub with good README
-- Practice explaining it for interviews
-
----
-
 ## 🎓 **What's Next?**
 
 ### **Level Up Projects:**
